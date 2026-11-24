@@ -1,0 +1,26 @@
+.sheet { position: fixed; inset: auto 0 0; margin: 0 auto; padding: 0; width: 100%; max-width: 540px; max-height: 94dvh; overflow: auto; overscroll-behavior: contain; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-top: 4px solid var(--acc); border-radius: 6px 6px 0 0; }
+.sheet[open] { animation: enter .2s both; }
+.sheet::backdrop { background: rgba(5,7,10,.68); }
+.sheet-head, .sheet-actions { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--panel); }
+.sheet-head { position: sticky; top: 0; z-index: 1; justify-content: space-between; border-bottom: 1px solid var(--line); }
+.sheet h2 { margin: 0; font-size: 28px; line-height: 1.15; overflow-wrap: anywhere; }
+.sheet-body { padding: 15px 16px 4px; }
+.sheet label, .account label { display: block; margin-bottom: 12px; min-width: 0; font: 600 10.5px/1.5 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--mute); }
+.sheet input, .sheet select, .sheet textarea, .account input { display: block; width: 100%; margin-top: 4px; background: var(--p2); font: 400 16px var(--body); color: var(--ink); letter-spacing: normal; text-transform: none; }
+.sheet textarea { resize: vertical; }
+.fields-pair { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.sheet details { border-top: 1px solid var(--line); }
+.sheet summary { padding: 14px 0; font: 600 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--acc); }
+.sheet-actions { position: sticky; bottom: 0; padding-bottom: max(12px,env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+.push { margin-left: auto; }
+.btn.ghost.danger { color: var(--red-ink); }
+.stage-options { display: grid; gap: 7px; padding-bottom: max(18px,env(safe-area-inset-bottom)); }
+.stage-option { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-left: 4px solid var(--stage); background: var(--p2); border-radius: 3px; text-align: left; font: 600 18px var(--hd); padding: 5px 14px; }
+.stage-option:disabled { background: var(--panel); }
+.stage-option svg { margin-left: auto; }
+@media (min-width: 700px) {
+  .sheet { inset: 0; margin: auto; border-radius: 5px; max-height: 90dvh; }
+  .sheet-head, .sheet-actions { padding-inline: 22px; }
+  .sheet-body { padding-inline: 22px; }
+  .sheet input, .sheet select, .sheet textarea { font-size: 14px; }
+}

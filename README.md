@@ -1,0 +1,78 @@
+# Application Tracker
+
+One repository contains the Vite/React frontend at the root and the Postgres migrations, RLS policies, database tests, and optional reminder function under `supabase/`.
+
+## Run it
+
+Use Node 22.12 or newer and npm. From the folder containing package.json:
+
+```sh
+npm ci
+npm run dev
+```
+
+Open http://localhost:5173. With both Supabase variables empty, the tracker opens in device mode. Your earlier frontend data is still available on the same browser origin. Once cloud configuration is present, the root route requires sign-in. The independent device workspace remains at /local. Account → Import device applications copies personal rows only after confirmation and preserves their dates. Repeating an import skips already imported IDs, including locally edited versions.
+
+## Supabase setup
+
+1. Create a Supabase project. Install the Supabase CLI and run `supabase login`. The source already includes supabase/config.toml. The standard initialization command `supabase init` is needed only for an empty checkout that has no Supabase directory.
+2. From the repo root link and apply the schema:
+   ```sh
+   supabase link --project-ref YOUR_PROJECT_REF
+   supabase db push
+   ```
+3. Copy .env.example to .env.local. Set VITE_SUPABASE_URL to the project URL and VITE_SUPABASE_ANON_KEY to the project's public anon JWT or publishable key. Restart Vite. Keep service-role, provider, and reminder secrets on the backend.
+4. In Authentication → Sign In / Providers, enable Email. Turn on confirmation and configure production SMTP for confirmation and recovery mail. Set a minimum password length of at least eight. The app uses PKCE. Open email links in the same browser that requested them when using Supabase’s default templates.
+5. For Google, create a Web OAuth client in Google Cloud. Register the **Supabase callback URL displayed in the Google provider settings** as the authorized redirect URI. Paste the Google client ID and secret into the Supabase Google provider and enable it. The app returns from Supabase to /auth/callback.
+6. In Authentication → URL Configuration, set Site URL to the production Vercel origin. Add both /auth/callback and /reset-password on the production origin and on http://localhost:5173. Add http://localhost:5173 for local testing. For previews add the two paths using a wildcard restricted to **your project and Vercel team**, for example `https://your-project-*-your-team.vercel.app/auth/callback` and the corresponding /reset-password URL. Check the actual preview hostname pattern before saving.
+7. The migrations publish applications to supabase_realtime. Keep private Realtime channels enabled. Signed-in clients listen for owner-filtered inserts and updates and a private deletion signal. The client reconciles on subscription, reconnect, and window focus.
+
+To run the stack locally, start Docker and use `npm run db:start`. Read the local URL, anon key and email test inbox URL from `supabase status`. Set those local values in .env.local. Run `npm run db:test` against this local database. Cloud provider settings are configured separately on a hosted project. For local Google testing, enable [auth.external.google] in config.toml with env-backed client_id and secret, and register the local Supabase Auth callback with Google.
+
+## Vercel
+
+1. Push the complete application-tracker directory as the repository root. Import that repository in Vercel. Leave Root Directory at the root.
+2. Use the detected Vite preset, npm run build, dist output, and Node 22.12+ (Node 24 works). The lockfile is included.
+3. Set the two VITE_SUPABASE variables for Production and the Preview environments you use. Point previews at a separate Supabase project if using test data.
+4. Deploy, copy the assigned domain into Supabase Auth URL Configuration, and redeploy after any change to build-time env values. vercel.json rewrites SPA routes to index.html. Test by opening /login and /reset-password directly.
+5. The production build includes locally hosted fonts, a manifest, phone icons and a versioned offline shell. Install from the HTTPS site’s browser menu or iOS Share → Add to Home Screen. Hosted writes require connectivity. Cached cloud data is scoped by project and account, and cleared for the departing account on sign-out. Device-mode edits stay in their separate browser store.
+
+## Workflow
+
+- Quick save accepts a company or posting link. Enter creates a Saved card, then opens its editor. Log application and the mobile plus button open an Applied draft. More details contains dates, location and pay.
+- Stage tiles filter both views. Search, type, and follow-up filters combine. Clear filters restores the pipeline. Priority rows sort first.
+- Drag by the grip, hold it briefly on touch, use the Move to… picker, or change the stage in List. Moving out of Saved stamps today's applied date. A stage change restarts the follow-up clock. Editing notes or starring a row preserves it.
+- Saved deadlines turn amber at three days and red after expiry. Applied items prompt follow-up after ten local calendar days. Use **Log follow-up** to restart the ten-day timer without changing the stage or applied date. A move toast can reveal the destination stage.
+- Cloud mutations appear immediately and revert on failure. A revision check prevents stale updates and deletes. Close and reopen an editor to review the latest record after a conflict. Closing a changed draft offers **Keep editing**. Destructive deletion requires a second action.
+- Use / for search and n for a new application. The theme follows the device until overridden. Motion honors the device’s reduced-motion preference.
+- Sample rows can be removed together without touching personal entries.
+
+## Commands
+
+```sh
+npm run dev
+npm run lint
+npm test
+npm run build
+npm run preview
+npm run db:start
+npm run db:test
+npm run db:lint
+npm run db:push
+```
+
+npm run db:reset recreates only the **local** database. Run it only when you intend to erase local database data. The root package contains the requested frontend libraries, Vite/React build tooling, and ESLint/React Hooks lint tooling. Regression tests use Node's built-in test runner. The Edge Function uses native fetch and the runtime crypto library.
+
+## Optional email reminders
+
+Deployment and scheduling instructions are in [supabase/functions/reminders/README.md](supabase/functions/reminders/README.md). Migrations prepare the schema. Email delivery starts when an operator configures Resend, deploys the function, schedules it, and a user opts in.
+
+## Acceptance checklist
+
+- Create an account, confirm its email, sign in, sign out, complete Google OAuth, and reset a password using the email link.
+- Add by URL and company. Log an Applied item. Reload the tracker and confirm persistence. Check the optional import against your original device records.
+- Move a card with the mouse and with a touch hold. Move another with the sheet. Confirm stage counts and applied dates.
+- Combine stage, search, type, priority and follow-up controls. Clear sample data and check personal records remain.
+- Open one account in two browsers. Add, move and delete in one. Observe changes in the other. Edit a stale draft and check the conflict warning.
+- Sign into a second account. Check that the first user's rows never display. Run the database tests to check ownership enforcement independently of the UI.
+- Install on a phone over HTTPS, reopen offline, check cached data, reconnect, and exercise the 360px layout and bottom sheet.

@@ -1,0 +1,51 @@
+.stage-nav { display: flex; position: sticky; top: env(safe-area-inset-top,0px); z-index: 2; background: var(--bg); overflow-x: auto; scrollbar-width: none; margin: 0 0 8px; border-bottom: 1px solid var(--line); }
+.stage-nav button { flex: 1; min-width: 44px; padding: 0 3px; border: 0; border-bottom: 3px solid transparent; color: var(--mute); font: 600 13px var(--hd); text-transform: uppercase; background: transparent; }
+.stage-nav .selected { border-color: var(--stage); color: var(--ink); }
+.board { position: relative; display: flex; gap: 12px; overflow-x: auto; align-items: flex-start; scroll-snap-type: x mandatory; padding: 2px 2px 14px; scrollbar-width: thin; }
+.column { flex: 1 0 85%; min-width: 0; scroll-snap-align: start; border: 1px solid var(--line); border-top: 3px solid var(--stage); border-radius: 4px; background: var(--p2); padding: 10px; transition: background .15s; }
+.column.over { background: color-mix(in srgb,var(--stage) 14%,var(--p2)); outline: 1px dashed var(--stage); }
+.column h2 { display: flex; align-items: center; justify-content: space-between; margin: 0; padding: 1px 4px 10px; font: 700 20px var(--hd); letter-spacing: .06em; }
+.column h2 small { font: 600 12px var(--mono); color: var(--mute); }
+.cards { display: grid; gap: 8px; }
+.dropzone { padding: 22px 0; text-align: center; border: 1px dashed var(--line); color: var(--mute); font: 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.card, .drag-preview { min-width: 0; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--stage); border-radius: 4px; padding: 4px 10px 0; overflow-wrap: anywhere; }
+.card { animation: enter .22s both; cursor: pointer; }
+.card:hover { border-color: var(--stage); }
+.card.dragging { opacity: .35; }
+.card-head { display: flex; justify-content: space-between; }
+.company { background: none; border: none; text-align: left; padding: 0; font-weight: 600; overflow-wrap: anywhere; }
+.priority.icon-button, .handle.icon-button { color: var(--mute); background: transparent; border: 0; }
+.priority.active, .priority:hover { color: var(--warn-ink); }
+.position { display: block; margin: -2px 0 9px; font-size: 12.5px; color: var(--mute); }
+.tags { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.tags span { padding: 2px 5px; color: var(--mute); border: 1px solid var(--line); border-radius: 3px; background: var(--p2); font: 10px/1.4 var(--mono); text-transform: uppercase; }
+.tags .soon, .row-nudge.soon { color: var(--warn-ink); border-color: var(--gold); }
+.tags .late, .row-nudge.late { color: var(--red-ink); border-color: var(--red); }
+.posting { justify-content: flex-start; font: 11px var(--mono); text-decoration: none; min-width: 44px; max-width: 100%; overflow-wrap: anywhere; }
+.posting:hover, .move:hover, .company:hover { text-decoration: underline; }
+.card-notes { margin: 6px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--mute); font-size: 12px; }
+.apply, .move { background: transparent; border: 0; color: var(--acc); padding: 0; font: 600 13px var(--hd); letter-spacing: .065em; text-transform: uppercase; }
+.card-foot { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); margin-top: 6px; }
+.move { color: var(--mute); }
+.handle { cursor: grab; touch-action: manipulation; user-select: none; -webkit-touch-callout: none; }
+.drag-preview { padding: 14px; box-shadow: 0 8px 22px #0003; }
+.drag-preview small { display: block; color: var(--mute); }
+@media (min-width: 700px) {
+  .stage-nav { display: none; }
+  .board { scroll-snap-type: x proximity; }
+  .column { flex-basis: 225px; max-height: 72vh; display: flex; flex-direction: column; }
+  .cards { overflow-y: auto; }
+}
+
+.board, .list-wrap { animation: enter .2s ease-out both; }
+.just-saved { animation: arrival 1.05s ease-out; }
+.priority.active svg { animation: star-pop .25s ease-out; }
+@keyframes arrival {
+  from { background-color: color-mix(in srgb,var(--stage) 26%,var(--panel)); box-shadow: inset 0 0 0 1px var(--stage); }
+  to { background-color: var(--panel); box-shadow: inset 0 0 0 1px transparent; }
+}
+@keyframes star-pop { 45% { scale: 1.22; } }
+@media (prefers-reduced-motion: reduce) {
+  .just-saved { outline: 1px solid var(--stage); outline-offset: -1px; }
+  .sync-line .working { animation: none; }
+}

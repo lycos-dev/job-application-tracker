@@ -1,0 +1,21 @@
+.list-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
+table { width: 100%; border-collapse: collapse; text-align: left; }
+th { padding: 11px; background: var(--p2); color: var(--mute); font: 600 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+td { padding: 4px 10px; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+.stage-select { border-color: var(--stage); background: color-mix(in srgb,var(--stage) 12%,var(--panel)); font: 11px var(--mono); }
+.row-nudge { display: block; color: var(--warn-ink); }
+@media (max-width: 699px) {
+  .list-wrap { border: 0; background: none; }
+  table,tbody { display: block; }
+  thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  tr { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 0 8px; padding: 6px 12px; border: 1px solid var(--line); border-left: 4px solid var(--stage); background: var(--panel); margin-bottom: 8px; border-radius: 4px; }
+  td { padding: 2px 0; border: 0; min-width: 0; }
+  td[data-label="Company"] { grid-area: 1/1; }
+  td[data-label="Priority"] { grid-area: 1/2; justify-self: end; }
+  td[data-label="Role"] { grid-area: 2/1; }
+  td[data-label="Type"] { grid-area: 2/2; justify-self: end; color: var(--mute); }
+  td[data-label="Stage"] { grid-area: 3/2; justify-self: end; }
+  td[data-label="Date"] { grid-area: 3/1; color: var(--mute); }
+  td[data-label="Link"] { grid-column: 1/-1; }
+}
+@media (min-width:700px) { .list-wrap { overflow-x: auto; } table { min-width: 680px; } }

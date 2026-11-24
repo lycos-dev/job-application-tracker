@@ -1,0 +1,24 @@
+@font-face { font-family: "Barlow Condensed"; font-weight: 600; font-display: swap; src: url("/fonts/barlow-condensed-600.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-weight: 700; font-display: swap; src: url("/fonts/barlow-condensed-700.woff2") format("woff2"); }
+@font-face { font-family: Inter; font-weight: 400; font-display: swap; src: url("/fonts/inter-400.woff2") format("woff2"); }
+@font-face { font-family: Inter; font-weight: 500; font-display: swap; src: url("/fonts/inter-500.woff2") format("woff2"); }
+@font-face { font-family: Inter; font-weight: 600; font-display: swap; src: url("/fonts/inter-600.woff2") format("woff2"); }
+
+:root {
+  color-scheme: light;
+  --bg: #e8ebee; --panel: #fff; --p2: #f1f3f5; --line: #ccd2d9;
+  --ink: #12161b; --mute: #586271; --acc: #5b63e6; --gold: #d99a00;
+  --red: #e0405f; --grid: rgba(20,30,50,.07); --on-accent: white;
+  --warn-ink: #815700; --red-ink: #a42141;
+  --saved: #f5b83d; --applied: #7c83ff; --interviewing: #3aa0ff; --offer: #22c997; --closed: #9aa0b4;
+  --hd: "Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body: Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono: ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0a0c0f; --panel: #13171c; --p2: #1b2027; --line: #2b323b;
+  --ink: #e9edf2; --mute: #8e98a6; --acc: #7c83ff; --gold: #f5b83d;
+  --red: #ff5f7e; --grid: rgba(255,255,255,.045); --on-accent: #101324;
+  --warn-ink: var(--gold); --red-ink: var(--red);
+}
