@@ -3,7 +3,6 @@ import { lazy, Suspense } from 'react'
 import LoadingSkeleton from './components/LoadingSkeleton.jsx'
 
 import { useAuth } from './hooks/useAuth.js'
-import { cloudEnabled, configIssue } from './lib/api.js'
 import { useTheme } from './hooks/useTheme.js'
 import './styles/tokens.css'
 import './styles/base.css'
@@ -12,11 +11,11 @@ import './styles/board.css'
 import './styles/list.css'
 import './styles/sheets.css'
 import './styles/auth.css'
+import './styles/workspace.css'
 
 const Tracker = lazy(() => import('./pages/Tracker.jsx'))
 const Login = lazy(() => import('./pages/Login.jsx'))
 
-const Account = lazy(() => import('./pages/Account.jsx'))
 const AuthCallback = lazy(() => import('./pages/AuthCallback.jsx'))
 
 function WorkspaceRoutes() {
@@ -25,13 +24,19 @@ function WorkspaceRoutes() {
   const location = useLocation()
   const hasCallback = Boolean(location.search || location.hash)
   if (loading) return <LoadingSkeleton />
-  const local = <Tracker key="local" theme={theme} />
   const login = mode => <Login key={mode} mode={mode} user={user} authError={error} />
-  const guard = component => user ? component : <Navigate to="/login" replace />
+  const segments = location.pathname.split('/').filter(Boolean)
+  const device = segments[0] === 'local'
+  const tab = segments[device ? 1 : 0] || 'dashboard'
+  const workspace = device || user
+    ? <Tracker key={device ? 'local' : user.id} user={device ? null : user} theme={theme} tab={tab}/>
+    : <Navigate to="/login" replace />
   return <Suspense fallback={<LoadingSkeleton />}><Routes>
-    <Route path="/" element={cloudEnabled || configIssue ? guard(<Tracker key={user?.id} user={user} theme={theme}/>) : local} />
-    <Route path="/local" element={local} />
-    <Route path="/account" element={guard(<Account key={user?.id} user={user} />)} />
+    <Route path="/" element={<Navigate replace to={user ? '/dashboard' : '/login'}/>} />
+    {['dashboard','applications','follow-ups','account'].flatMap(section => [
+      <Route key={section} path={'/'+section} element={workspace}/>,
+      <Route key={'local-'+section} path={section==='dashboard'?'/local':'/local/'+section} element={workspace}/>,
+    ])}
     <Route path="/auth/callback" element={<AuthCallback recovery={new URLSearchParams(location.search).get('type') === 'recovery'} />} />
     <Route path="/login" element={login('login')} />
     <Route path="/signup" element={login('signup')} />

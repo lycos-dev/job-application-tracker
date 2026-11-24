@@ -1,6 +1,6 @@
-# Application Tracker · Complete source
+# Application Tracker · Source files
 
-Each heading gives the path from the repository root. Binary icons and fonts are included at their listed paths.
+Paths are relative to the repository root. Fonts and icons are supplied as binary files.
 
 ## `.env.example`
 
@@ -43,7 +43,30 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:5173. With both Supabase variables empty, the tracker opens in device mode. Your earlier frontend data is still available on the same browser origin. Once cloud configuration is present, the root route requires sign-in. The independent device workspace remains at /local. Account → Import device applications copies personal rows only after confirmation and preserves their dates. Repeating an import skips already imported IDs, including locally edited versions.
+Open http://localhost:5173. Choose **Continue on this device** to explore the app immediately with browser storage. Your previous device applications stay available at the same browser origin. On the dashboard choose **Try with sample data** for a populated preview.
+
+## Log in and sign up locally
+
+1. Install the Supabase CLI and start Docker Desktop (or a compatible Docker runtime).
+2. Stop any Vite server already using port 5173. From the repository root run:
+   ```sh
+   npm run dev:local
+   ```
+3. Open http://localhost:5173 and select **Sign up**. Enter an email and matching passwords. The launcher prints the URL of the local email inbox. Open the confirmation email there, in the same browser. Test **Log in**, **Forgot password?** and **Sign out** against this local project.
+4. The launcher starts Supabase, applies pending local migrations and passes its local API URL and public key to Vite for this session. Existing env files stay intact. Stop Vite with Ctrl+C. Run `npm run db:stop` when finished with the local backend.
+
+Google sign-in needs a Google OAuth client, even during local testing. The Google provider setup is described below. Device storage and account storage are independent. In a signed-in workspace, Settings → Import device applications copies personal rows after confirmation. Previously imported IDs are skipped.
+
+## Workspace navigation
+
+| Tab | What you can do |
+| --- | --- |
+| Dashboard | See all five stage totals, click a stage to open its board filter, review the three next actions, or reopen one of the four most recently updated applications. |
+| Applications | Quick-save a link, log an application, edit details, search, filter, switch between board and list, or move a card. |
+| Follow-ups | Work through overdue and upcoming Saved deadlines (seven-day window) and Applied items due for a follow-up. Log a follow-up to remove it from the due queue. |
+| Settings | Change theme, manage sample data, access account controls, import device records, and opt into reminders. |
+
+The sidebar becomes a bottom navigation bar on phones. Each tab has its own URL and supports browser back, forward, and reload. On desktop, press / from any workspace tab to jump to search.
 
 ## Supabase setup
 
@@ -87,6 +110,7 @@ npm run lint
 npm test
 npm run build
 npm run preview
+npm run dev:local
 npm run db:start
 npm run db:test
 npm run db:lint
@@ -3046,7 +3070,8 @@ export default [
     "db:test": "supabase test db",
     "db:new": "supabase migration new",
     "postbuild": "node scripts/build-offline.js",
-    "test": "node --test"
+    "test": "node --test",
+    "dev:local": "node scripts/dev-local.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -3066,11 +3091,11 @@ export default [
 
 ## `public/fonts/barlow-condensed-600.woff2`
 
-Binary asset (22,308 bytes).
+Binary file included in the project.
 
 ## `public/fonts/barlow-condensed-700.woff2`
 
-Binary asset (22,444 bytes).
+Binary file included in the project.
 
 ## `public/fonts/barlow-condensed-LICENSE.txt`
 
@@ -3172,15 +3197,15 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ## `public/fonts/inter-400.woff2`
 
-Binary asset (23,664 bytes).
+Binary file included in the project.
 
 ## `public/fonts/inter-500.woff2`
 
-Binary asset (24,272 bytes).
+Binary file included in the project.
 
 ## `public/fonts/inter-600.woff2`
 
-Binary asset (24,452 bytes).
+Binary file included in the project.
 
 ## `public/fonts/inter-LICENSE.txt`
 
@@ -3282,23 +3307,23 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ## `public/icons/apple-touch-icon.png`
 
-Binary asset (2,783 bytes).
+Binary file included in the project.
 
 ## `public/icons/icon-192.png`
 
-Binary asset (2,453 bytes).
+Binary file included in the project.
 
 ## `public/icons/icon-512.png`
 
-Binary asset (5,360 bytes).
+Binary file included in the project.
 
 ## `public/icons/maskable-512.png`
 
-Binary asset (5,360 bytes).
+Binary file included in the project.
 
 ## `public/manifest.webmanifest`
 
-````json
+````text
 {
   "id": "/",
   "name": "Application Tracker",
@@ -3363,6 +3388,39 @@ const worker = [
 await writeFile(join(dist, 'sw.js'), worker)
 ````
 
+## `scripts/dev-local.js`
+
+````js
+import { spawnSync } from 'node:child_process'
+import { createServer } from 'vite'
+
+function cli(args) {
+  // Capture status privately. It can contain credentials that Vite must never expose.
+  const result=spawnSync('supabase',args,{encoding:'utf8',maxBuffer:8*1024*1024,windowsHide:true})
+  if(result.error?.code==='ENOENT') throw Error('Install the Supabase CLI and start Docker Desktop, then run npm run dev:local again.')
+  if(result.error || result.status!==0) throw Error('Supabase '+args[0]+' failed. Check Docker is running and run supabase '+args[0]+' from this folder for details.')
+  return result.stdout
+}
+
+try {
+  console.log('Starting your local Supabase project…')
+  cli(['start'])
+  cli(['migration','up','--local'])
+  const entries=Object.fromEntries(cli(['status','-o','env']).split(/\r?\n/).flatMap(line=>{
+    const match=/^([A-Z_]+)="?([^"]*)"?$/.exec(line.trim())
+    return match?[[match[1],match[2]]]:[]
+  }))
+  const url=entries.API_URL, key=entries.PUBLISHABLE_KEY||entries.ANON_KEY
+  if(!url||!key) throw Error('Supabase did not return its local API URL and public key. Update the CLI and retry.')
+  process.env.VITE_SUPABASE_URL=url
+  process.env.VITE_SUPABASE_ANON_KEY=key
+  console.log('Local confirmation and recovery inbox: '+(entries.MAILPIT_URL||entries.INBUCKET_URL||'http://127.0.0.1:54324'))
+  const server=await createServer({server:{port:5173,strictPort:true}})
+  await server.listen()
+  server.printUrls()
+} catch(e) { console.error(e.message); process.exitCode=1 }
+````
+
 ## `src/App.jsx`
 
 ````jsx
@@ -3371,7 +3429,6 @@ import { lazy, Suspense } from 'react'
 import LoadingSkeleton from './components/LoadingSkeleton.jsx'
 
 import { useAuth } from './hooks/useAuth.js'
-import { cloudEnabled, configIssue } from './lib/api.js'
 import { useTheme } from './hooks/useTheme.js'
 import './styles/tokens.css'
 import './styles/base.css'
@@ -3380,11 +3437,11 @@ import './styles/board.css'
 import './styles/list.css'
 import './styles/sheets.css'
 import './styles/auth.css'
+import './styles/workspace.css'
 
 const Tracker = lazy(() => import('./pages/Tracker.jsx'))
 const Login = lazy(() => import('./pages/Login.jsx'))
 
-const Account = lazy(() => import('./pages/Account.jsx'))
 const AuthCallback = lazy(() => import('./pages/AuthCallback.jsx'))
 
 function WorkspaceRoutes() {
@@ -3393,13 +3450,19 @@ function WorkspaceRoutes() {
   const location = useLocation()
   const hasCallback = Boolean(location.search || location.hash)
   if (loading) return <LoadingSkeleton />
-  const local = <Tracker key="local" theme={theme} />
   const login = mode => <Login key={mode} mode={mode} user={user} authError={error} />
-  const guard = component => user ? component : <Navigate to="/login" replace />
+  const segments = location.pathname.split('/').filter(Boolean)
+  const device = segments[0] === 'local'
+  const tab = segments[device ? 1 : 0] || 'dashboard'
+  const workspace = device || user
+    ? <Tracker key={device ? 'local' : user.id} user={device ? null : user} theme={theme} tab={tab}/>
+    : <Navigate to="/login" replace />
   return <Suspense fallback={<LoadingSkeleton />}><Routes>
-    <Route path="/" element={cloudEnabled || configIssue ? guard(<Tracker key={user?.id} user={user} theme={theme}/>) : local} />
-    <Route path="/local" element={local} />
-    <Route path="/account" element={guard(<Account key={user?.id} user={user} />)} />
+    <Route path="/" element={<Navigate replace to={user ? '/dashboard' : '/login'}/>} />
+    {['dashboard','applications','follow-ups','account'].flatMap(section => [
+      <Route key={section} path={'/'+section} element={workspace}/>,
+      <Route key={'local-'+section} path={section==='dashboard'?'/local':'/local/'+section} element={workspace}/>,
+    ])}
     <Route path="/auth/callback" element={<AuthCallback recovery={new URLSearchParams(location.search).get('type') === 'recovery'} />} />
     <Route path="/login" element={login('login')} />
     <Route path="/signup" element={login('signup')} />
@@ -3411,6 +3474,34 @@ function WorkspaceRoutes() {
 
 export default function App() {
   return <BrowserRouter><WorkspaceRoutes /></BrowserRouter>
+}
+````
+
+## `src/components/Agenda.jsx`
+
+````jsx
+import { useState } from 'react'
+import Icon from './Icon.jsx'
+
+export function ActionRow({item,edit,follow,compact=false}) {
+  const {row,kind,label} = item
+  return <div className={'action-row '+kind}>
+    <span className="action-symbol"><Icon name={kind==='deadline'?'calendar':'flag'}/></span>
+    <button className="row-title" onClick={()=>edit(row)}><b>{row.company}</b><small>{label}</small></button>
+    {!compact && kind==='follow' ? <button className="soft-button" onClick={()=>follow(row)}>Log follow-up</button> :
+      <button className="row-arrow" aria-label={'Open '+row.company} onClick={()=>edit(row)}><Icon name="arrow" size={16}/></button>}
+  </div>
+}
+export default function Agenda({items,actions}){
+  const [filter,setFilter] = useState('all')
+  const shown = items.filter(item=>filter==='all'||item.kind===filter)
+  return <section className="surface agenda"><div className="section-top"><h2>Action queue</h2></div>
+    <div className="queue-tabs" aria-label="Action type">{[['all','All'],['follow','Follow-ups'],['deadline','Deadlines']].map(([key,label])=>
+      <button key={key} aria-pressed={key===filter} onClick={()=>setFilter(key)}>{label}</button>)}</div>
+    {shown.map(item=><ActionRow key={item.row.id} item={item} edit={actions.edit} follow={actions.follow}/>)}
+    {!shown.length && <div className="quiet"><Icon name="check"/><h3>You’re caught up</h3>
+      <p>{filter==='follow'?'Applications appear here after ten days without activity.':filter==='deadline'?'No overdue or upcoming deadlines in the next seven days.':'Upcoming deadlines and applications due for a follow-up will appear here.'}</p></div>}
+  </section>
 }
 ````
 
@@ -3455,6 +3546,14 @@ export default function Board({ rows, stage, actions, today }) {
       actions={actions} today={today} />)}</div>
     <DragOverlay>{active && <div className="drag-preview" style={stageStyle(active.stage)}><b>{active.company}</b><small>{active.role}</small></div>}</DragOverlay>
   </DndContext>
+}
+````
+
+## `src/components/Brand.jsx`
+
+````jsx
+export default function Brand(){
+  return <span className="brand"><span className="brand-mark" aria-hidden="true"><i/><i/><i/></span>Application Tracker</span>
 }
 ````
 
@@ -3646,6 +3745,11 @@ export default function FilterBar({ query, setQuery, type, setType, due, setDue,
 
 ````jsx
 const paths = {
+  overview:'M3 3h7v8H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 15h7v6H3z',
+  settings:'M4 7h6m4 0h6M4 17h10m4 0h2M10 4v6m4 4v6',
+  calendar:'M3 5h18v16H3zM7 3v5m10-5v5M3 11h18',
+  eye:'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zm13 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0',
+
   plus: 'M12 5v14M5 12h14', arrow: 'M4 12h15m-6-6 6 6-6 6',
   external: 'M7 17 18 6M8 6h10v10', search: 'M20 20l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0',
   star: 'm12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2-5.5-2.9-5.5 2.9 1-6.2L3 9.6l6.2-.9z',
@@ -3726,8 +3830,7 @@ export default function MoveSheet({ row, onMove, onClose }) {
 
 ````jsx
 import { useRef, useState } from 'react'
-import Icon from './Icon.jsx'
-export default function QuickAdd({ onQuick, onNew }) {
+export default function QuickAdd({ onQuick }) {
   const [text,setText] = useState('')
   const [error,setError] = useState('')
   const pending = useRef(false)
@@ -3741,7 +3844,6 @@ export default function QuickAdd({ onQuick, onNew }) {
     <input aria-label="Quick save" placeholder="Job link or company" value={text}
       onChange={e => { setText(e.target.value); setError('') }} required />
     <button className="btn">Save for later</button>
-    <button type="button" className="btn ghost log-top" onClick={onNew}><Icon name="plus" size={16}/>Log application</button>
   </form>{error && <p className="error" role="alert">{error}</p>}</>
 }
 ````
@@ -3832,6 +3934,29 @@ export default function Toast({ notice, onDismiss }) {
   return notice && <div className={'toast' + (notice.error ? ' failed' : '')} role={notice.error ? 'alert' : 'status'}>
     <span>{notice.text}</span>{notice.action && <button className="toast-action" onClick={notice.onAction}>{notice.action}</button>}<button className="icon-button" aria-label="Dismiss message" onClick={onDismiss}><Icon name="x" size={16}/></button>
   </div>
+}
+````
+
+## `src/components/WorkspaceNav.jsx`
+
+````jsx
+import { Link } from 'react-router-dom'
+import Brand from './Brand.jsx'
+import Icon from './Icon.jsx'
+
+export const tabs = {dashboard:'Dashboard',applications:'Applications','follow-ups':'Follow-ups',account:'Settings'}
+const icons = {dashboard:'overview',applications:'board','follow-ups':'flag',account:'settings'}
+export default function WorkspaceNav({active,pathFor,user,count,theme}){
+  return <aside className="workspace-nav"><Link className="brand-link" to={pathFor('dashboard')}><Brand/></Link>
+    <nav className="main-tabs" aria-label="Workspace">{Object.entries(tabs).map(([key,label]) =>
+      <Link key={key} to={pathFor(key)} aria-current={active===key?'page':undefined} className="tab-link">
+        <Icon name={icons[key]} /><span>{label}</span>{key==='follow-ups' && count>0 && <small>{count}</small>}
+      </Link>)}</nav>
+    <div className="workspace-identity"><Icon name="device"/><div><b>{user?'Personal workspace':'Device workspace'}</b>
+      <small>{user?.email || 'Saved in this browser'}</small></div></div>
+    <button className="theme-control" title={'Theme: '+theme.mode} aria-label={'Theme: '+theme.mode+'. Change theme'} onClick={theme.cycle}>
+      <Icon name="theme"/><span>Theme</span><small>{theme.mode}</small></button>
+  </aside>
 }
 ````
 
@@ -3944,6 +4069,30 @@ export function useTheme() {
 }
 ````
 
+## `src/lib/agenda.js`
+
+````js
+import { daysBetween, followUp, localDate, shortDate } from './utils.js'
+
+export function nextActions(rows,today){
+  const deadlines = [], followups = []
+  for (const row of rows) {
+    if (row.stage === 'Saved' && row.deadline) {
+      const days = daysBetween(today,row.deadline)
+      if (days <= 7) deadlines.push({row,kind:'deadline',days,label:days < 0 ? 'Overdue · '+shortDate(row.deadline) :
+        days === 0 ? 'Due today' : days === 1 ? 'Due tomorrow' : 'Apply by '+shortDate(row.deadline)})
+    } else if (followUp(row,today)) {
+      const last = Math.max(Date.parse(row.stage_changed_at),Date.parse(row.last_followed_up_at)||0)
+      const days = daysBetween(localDate(new Date(last)),today)
+      followups.push({row,kind:'follow',days,label:days+' days since last activity'})
+    }
+  }
+  deadlines.sort((a,b)=>a.days-b.days || a.row.company.localeCompare(b.row.company))
+  followups.sort((a,b)=>b.days-a.days || a.row.company.localeCompare(b.row.company))
+  return [...deadlines.filter(x=>x.days<=1),...followups,...deadlines.filter(x=>x.days>1)]
+}
+````
+
 ## `src/lib/api.js`
 
 ````js
@@ -3969,6 +4118,9 @@ const redirect = path => new URL(path, window.location.origin).href
 export const signIn = async (email, password) => checked(await db().auth.signInWithPassword({ email, password }))
 export const signUp = async (email, password) => checked(await db().auth.signUp({
   email, password, options: { emailRedirectTo: redirect('/auth/callback') },
+}))
+export const resendConfirmation = async email => checked(await db().auth.resend({
+  type:'signup', email, options:{emailRedirectTo:redirect('/auth/callback')},
 }))
 export const google = async () => checked(await db().auth.signInWithOAuth({
   provider: 'google', options: { redirectTo: redirect('/auth/callback') },
@@ -4615,8 +4767,8 @@ export default function Account({ user }) {
     setBusy(true); setError(''); setMessage('')
     try { await fn() } catch (e) { setError(e.message) } finally { setBusy(false) }
   }
-  return <main className="account"><Link className="back" to="/">← Back to tracker</Link>
-    <section className="account-panel"><h1>Your account</h1><p>{user.email}</p>
+  return <div className="account embedded-account">
+    <section className="account-panel"><h2>Account details</h2><p>{user.email}</p>
       <section><h2>Email reminders</h2><p>Get one daily email when a Saved deadline is within three days or an Applied item needs a follow-up.</p>
         <label className="check"><input type="checkbox" checked={enabled} disabled={!ready || busy}
           onChange={e => { const value = e.target.checked; run(async () => {
@@ -4639,7 +4791,7 @@ export default function Account({ user }) {
       {error && <p role="alert" className="error">{error}</p>}
       <div className="account-controls"><Link to="/reset-password">Change password</Link>
         <button className="btn ghost" disabled={busy} onClick={() => run(async () => { await api.signOut(); navigate('/login',{replace:true}) })}>Sign out</button></div>
-    </section></main>
+    </section></div>
 }
 ````
 
@@ -4666,71 +4818,139 @@ export default function AuthCallback({ recovery }) {
 }
 ````
 
+## `src/pages/Dashboard.jsx`
+
+````jsx
+import { STAGES, stageStyle, shortDate, localDate } from '../lib/utils.js'
+import Icon from '../components/Icon.jsx'
+import {ActionRow} from '../components/Agenda.jsx'
+
+export default function Dashboard({rows,items,openStage,openAgenda,edit,onSamples,onNew}){
+  const recent = [...rows].sort((a,b)=>b.updated_at.localeCompare(a.updated_at)).slice(0,4)
+  const counts = STAGES.map(stage=>rows.filter(r=>r.stage===stage).length)
+  return <div className="dashboard-grid">
+    <section className="pipeline-summary"><div className="summary-head"><h2>Your pipeline</h2>
+      <button onClick={()=>openStage('')} aria-label="View all applications"><Icon name="external"/></button></div>
+      <div className="pipeline-total"><strong>{rows.length}</strong><span>tracked {rows.length===1?'opportunity':'opportunities'}</span></div>
+      <div className="distribution" aria-hidden="true">{STAGES.map((s,i)=><i key={s} style={{...stageStyle(s),flex:counts[i]||0}}/>)}</div>
+      <div className="stage-legend">{STAGES.map((s,i)=><button key={s} style={stageStyle(s)} onClick={()=>openStage(s)}
+        aria-label={'View '+s+' applications'}><span><i/>{s}</span><b>{counts[i]}</b></button>)}</div>
+    </section>
+    <section className="surface next-up"><div className="section-top"><h2>Needs attention</h2><button className="text-action" onClick={openAgenda}>View all <Icon name="arrow" size={14}/></button></div>
+      {items.length ? items.slice(0,3).map(item=><ActionRow key={item.row.id} item={item} edit={edit} compact/>) :
+        <div className="quiet"><Icon name="check"/><h3>All caught up</h3><p>Deadlines and follow-ups will show up here when they’re due.</p></div>}
+    </section>
+    <section className="surface recent"><div className="section-top"><h2>Recently updated</h2>
+      {!!rows.length && <button className="text-action" onClick={()=>openStage('')}>Applications <Icon name="arrow" size={14}/></button>}</div>
+      {recent.length ? recent.map(row=><button className="recent-row" key={row.id} onClick={()=>edit(row)} style={stageStyle(row.stage)}>
+        <span className="company-monogram">{row.company.trim().slice(0,1).toUpperCase()}</span>
+        <span className="recent-name"><b>{row.company}</b><small>{row.role || row.type}</small></span>
+        <span className="stage-label"><i/>{row.stage}</span>
+        <span className="recent-date">{shortDate(localDate(new Date(row.updated_at)))}</span><Icon name="arrow" size={14}/>
+      </button>) : <div className="first-entry"><h3>Start with your first opportunity</h3>
+        <p>Log an application, or explore the dashboard with sample entries.</p>
+        <div><button className="btn ghost" onClick={onNew}>Log an application</button><button className="text-action" onClick={onSamples}>Try with sample data</button></div>
+      </div>}
+    </section>
+  </div>
+}
+````
+
 ## `src/pages/Login.jsx`
 
 ````jsx
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import * as api from '../lib/api.js'
+import Brand from '../components/Brand.jsx'
+import Icon from '../components/Icon.jsx'
 
-const titles = {login:'Sign in',signup:'Create account',forgot:'Reset password',reset:'Set new password'}
-export default function Login({ mode = 'login', user, authError }) {
-  const [error,setError] = useState('')
-  const [message,setMessage] = useState('')
-  const [busy,setBusy] = useState(false)
-  const lock = useRef(false)
-  const navigate = useNavigate()
-  if (user && ['login','signup'].includes(mode)) return <Navigate replace to="/" />
-  const reset = mode === 'reset'
-  const ready = api.cloudEnabled && (!reset || user)
-  async function run(action) {
-    if (lock.current) return
-    lock.current = true
-    setBusy(true); setError(''); setMessage('')
-    try { await action() } catch(e) { setError(e.message) }
-    finally { setBusy(false); lock.current = false }
+const titles = { login:'Welcome back', signup:'Create your account', forgot:'Reset your password', reset:'Choose a new password' }
+const captions = { login:'Sign in to your application workspace.',signup:'Keep your applications and next steps together across devices.',
+  forgot:'Enter the email you used to create your account.',reset:'Use at least eight characters.' }
+
+function PasswordField({ label, name, existing=false }) {
+  const [visible,setVisible] = useState(false)
+  return <label className="auth-field"><span>{label}</span><span className="password-wrap">
+    <input name={name} type={visible?'text':'password'} autoComplete={existing?'current-password':'new-password'}
+      minLength={existing?1:8} required aria-label={label}/>
+    <button type="button" onClick={()=>setVisible(!visible)} aria-label={(visible?'Hide ':'Show ')+label.toLowerCase()}
+      aria-pressed={visible}><Icon name="eye" size={17}/></button></span></label>
+}
+
+export default function Login({ mode='login', user, authError }) {
+  const [busy,setBusy]=useState(false)
+  const [error,setError]=useState('')
+  const [sent,setSent]=useState('')
+  const [resent,setResent]=useState(false)
+  const lock=useRef(false)
+  const navigate=useNavigate()
+  const authEntry=mode==='login'||mode==='signup'
+  const recovery=mode==='reset'
+  useEffect(()=>{document.title=titles[mode]+' · Application Tracker'},[mode])
+  if (user && authEntry) return <Navigate replace to="/dashboard"/>
+  async function run(fn){
+    if(lock.current) return
+    lock.current=true; setBusy(true); setError('')
+    try { await fn() } catch(e){ setError(e.message) }
+    finally { lock.current=false; setBusy(false) }
   }
-  function submit(event) {
+  function submit(event){
     event.preventDefault()
-    const form = new FormData(event.currentTarget)
-    const email = String(form.get('email') || '').trim()
-    const password = String(form.get('password') || '')
-    run(async () => {
-      if (mode === 'forgot') {
-        await api.requestReset(email)
-        setMessage('If this email has an account, a reset link is on its way. Open it in this browser.')
-      } else if (reset) {
-        if (password !== form.get('confirmation')) throw new Error('The passwords must match.')
-        await api.changePassword(password)
-        navigate('/account',{replace:true,state:{message:'Password updated.'}})
-      } else if (mode === 'signup') {
-        const result = await api.signUp(email,password)
-        if (result.session) navigate('/',{replace:true})
-        else setMessage('Check your inbox and open the confirmation link in this browser.')
-      } else {
-        await api.signIn(email,password)
-        navigate('/',{replace:true})
-      }
+    const fields=new FormData(event.currentTarget)
+    const email=String(fields.get('email')||'').trim()
+    const password=String(fields.get('password')||'')
+    run(async()=>{
+      if ((mode==='signup'||recovery) && password!==fields.get('confirm')) throw Error('Your passwords don’t match.')
+      if (!api.cloudEnabled) throw Error(api.configIssue || 'Account services are offline. Start the local accounts server, or open the device workspace below.')
+      if(mode==='signup'){
+        const data=await api.signUp(email,password)
+        if(data.session) navigate('/dashboard',{replace:true})
+        else setSent(email)
+      } else if(mode==='forgot'){ await api.requestReset(email); setSent(email) }
+      else if(recovery){ await api.changePassword(password); navigate('/account',{replace:true,state:{message:'Password updated.'}}) }
+      else { await api.signIn(email,password); navigate('/dashboard',{replace:true}) }
     })
   }
-  return <main className="account"><Link className="back" to={user ? '/' : '/local'}>← Application Tracker</Link>
-    <section className="account-panel"><h1>{titles[mode]}</h1>
-      {!api.cloudEnabled && <p className="account-notice">{api.configIssue || 'This copy uses device storage. Connect Supabase to enable cloud accounts.'}</p>}
-      {reset && !user && api.cloudEnabled && <p>Open the latest recovery email or request another link.</p>}
-      <form onSubmit={submit}><fieldset disabled={!ready || busy}>
-        {!reset && <label>Email address<input name="email" type="email" autoComplete="email" required/></label>}
-        {mode !== 'forgot' && <label>{reset ? 'New password' : 'Password'}<input name="password" type="password"
-          minLength={mode === 'login' ? 1 : 8} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required/></label>}
-        {reset && <label>Confirm new password<input name="confirmation" type="password" autoComplete="new-password" required/></label>}
-        <button className="btn">{busy ? 'Please wait…' : mode === 'forgot' ? 'Send reset link' : titles[mode]}</button>
-        {['login','signup'].includes(mode) && <button type="button" className="btn ghost" onClick={() => run(api.google)}>Continue with Google</button>}
-      </fieldset></form>
-      {(error || authError) && <p className="error" role="alert">{error || authError}</p>}
-      {message && <p role="status" className="notice-success">{message}</p>}
-      <nav className="account-links">{mode === 'login' ? <><Link to="/signup">Create account</Link><Link to="/forgot-password">Forgot password?</Link></> :
-        <Link to={reset && !user ? '/forgot-password' : '/login'}>{reset && !user ? 'Request another link' : 'Back to sign in'}</Link>}</nav>
-      <Link className="btn ghost local-action" to="/local">Continue on this device</Link>
-    </section></main>
+  return <main className="auth-layout">
+    <aside className="auth-art"><Brand/>
+      <div className="art-content"><h2>Application<br/>Tracker<span>.</span></h2>
+        <p>Your opportunities, from saved link to offer.</p>
+        <div className="paper-stack" aria-hidden="true">{[['Saved','saved'],['Applied','applied'],['Interviewing','interviewing']].map(([label,stage],i)=>
+          <div className={'paper paper-'+i} key={stage} style={{'--stage':'var(--'+stage+')'}}><div><i/>{label}</div><span/><span/></div>)}</div>
+      </div>
+    </aside>
+    <section className="auth-form-area"><div className="auth-form-card">
+      <div className="mobile-brand"><Brand/></div>
+      {authEntry && !sent && <nav className="auth-tabs" aria-label="Account access">
+        <Link to="/login" aria-current={mode==='login'?'page':undefined}>Log in</Link>
+        <Link to="/signup" aria-current={mode==='signup'?'page':undefined}>Sign up</Link></nav>}
+      <h1>{sent?'Check your email':titles[mode]}</h1>
+      <p className="auth-caption">{sent ? mode==='forgot' ? 'If an account exists for '+sent+', a reset link is on its way.' :
+        'Open the confirmation link sent to '+sent+' in this browser.' : !api.cloudEnabled && authEntry ? 'Use the device workspace now, or start local accounts to '+(mode==='signup'?'sign up.':'log in.') : captions[mode]}</p>
+      {sent ? <div className="sent-actions">
+        <Link className="btn" to="/login">Back to login</Link>
+        <button className="soft-button" disabled={busy||resent} onClick={()=>run(async()=>{
+          if(mode==='forgot') await api.requestReset(sent); else await api.resendConfirmation(sent)
+          setResent(true)
+        })}>{resent?'Email requested':'Resend email'}</button></div> :
+      recovery && !user ? <Link className="btn" to="/forgot-password">Request a fresh reset link</Link> :
+      <form onSubmit={submit} className="auth-form"><fieldset disabled={busy}>
+        {!recovery && <label className="auth-field"><span>Email address</span><input name="email" type="email" autoComplete="email" required placeholder="you@example.com"/></label>}
+        {mode!=='forgot' && <PasswordField label={recovery?'New password':'Password'} name="password" existing={mode==='login'}/>}
+        {(recovery||mode==='signup') && <><p className="field-help">At least 8 characters.</p><PasswordField label="Confirm password" name="confirm"/></>}
+        {mode==='login' && <Link className="forgot-link" to="/forgot-password">Forgot password?</Link>}
+        <button className="btn auth-primary">{busy?'Please wait…':{login:'Log in',signup:'Create account',forgot:'Send reset link',reset:'Save password'}[mode]}<Icon name="arrow" size={16}/></button>
+        {authEntry && api.cloudEnabled && <button className="btn ghost google-btn" type="button" onClick={()=>run(api.google)}>Continue with Google</button>}
+      </fieldset></form>}
+      {(error||authError||api.configIssue) && <p role="alert" className="error">{error||authError||api.configIssue}</p>}
+      {!sent && !authEntry && <Link className="back-login" to="/login">← Back to login</Link>}
+      <footer className="auth-foot">{!api.cloudEnabled && <details><summary>Start local accounts to log in or sign up</summary>
+        <p>With Docker and the Supabase CLI installed, run <code>npm run dev:local</code> from the project folder. It starts local accounts and prints the test inbox address.</p></details>}
+        <Link to="/local">Continue on this device <Icon name="arrow" size={15}/></Link>
+      </footer>
+    </div></section>
+  </main>
 }
 ````
 
@@ -4738,10 +4958,15 @@ export default function Login({ mode = 'login', user, authError }) {
 
 ````jsx
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useApplications } from '../hooks/useApplications.js'
 import { blank, followUp, localDate, quickFields, sortedRows } from '../lib/utils.js'
 import LoadingSkeleton from '../components/LoadingSkeleton.jsx'
+import WorkspaceNav, { tabs } from '../components/WorkspaceNav.jsx'
+import Dashboard from './Dashboard.jsx'
+import Account from './Account.jsx'
+import Agenda from '../components/Agenda.jsx'
+import { nextActions } from '../lib/agenda.js'
 import Board from '../components/Board.jsx'
 import ListView from '../components/ListView.jsx'
 import StageTiles from '../components/StageTiles.jsx'
@@ -4753,7 +4978,19 @@ import Toast from '../components/Toast.jsx'
 import EditorSheet from '../components/EditorSheet.jsx'
 import MoveSheet from '../components/MoveSheet.jsx'
 
-export default function Tracker({ theme, user }) {
+export default function Tracker({ theme, user, tab }) {
+  const navigate = useNavigate()
+  const focusAfterNav = useRef(false)
+  const pathFor = useCallback(section => user ? '/' + section : section === 'dashboard' ? '/local' : '/local/' + section,[user])
+  useEffect(() => {
+    document.title = tabs[tab] + ' · Application Tracker'
+    window.scrollTo(0,0)
+    if (tab==='applications' && focusAfterNav.current) {
+      focusAfterNav.current=false
+      const field=search.current || quick.current?.querySelector('input')
+      field?.focus()
+    }
+  },[tab])
   const { rows, error, api, loading, pending, status } = useApplications(user?.id)
   const [stage,setStage] = useState('')
   const [type,setType] = useState('')
@@ -4781,12 +5018,16 @@ export default function Tracker({ theme, user }) {
     const keydown = e => {
       if (editor || moveId || e.isComposing || e.repeat || e.altKey || e.metaKey || e.ctrlKey ||
         e.target.closest('input,textarea,select,[contenteditable="true"]')) return
-      if (e.key === '/') { e.preventDefault(); (search.current || quick.current?.querySelector('input'))?.focus() }
+      if (e.key === '/') {
+        e.preventDefault()
+        if (tab !== 'applications') { focusAfterNav.current=true; navigate(pathFor('applications')) }
+        else (search.current || quick.current?.querySelector('input'))?.focus()
+      }
       if (e.key === 'n') { e.preventDefault(); setEditor(blank('Applied')) }
     }
     window.addEventListener('keydown',keydown)
     return () => window.removeEventListener('keydown',keydown)
-  },[editor,moveId])
+  },[editor,moveId,tab,navigate,pathFor])
   useEffect(() => {
     if (!highlight) return
     const timeout = setTimeout(() => setHighlight(null),1200)
@@ -4798,7 +5039,7 @@ export default function Tracker({ theme, user }) {
     await api.update(id,{stage:target})
     setHighlight({id})
     setNotice({text:'Moved to ' + target + '.', action:'Show stage', onAction:() => {
-      reset(); setStage(target); setNotice(null)
+      openStage(target); setNotice(null)
     }})
   }
   const actions = { highlight:highlight?.id, edit:setEditor, pick:row => setMoveId(row.id),
@@ -4812,34 +5053,50 @@ export default function Tracker({ theme, user }) {
   const visible = sortedRows(rows.filter(row => (!stage || row.stage === stage) && (!type || row.type === type) &&
     (!due || followUp(row,today)) && [row.company,row.role,row.notes,row.location].join(' ').toLocaleLowerCase().includes(term)))
   const moving = rows.find(row => row.id === moveId)
+  const items = nextActions(rows,today)
+  const samples = rows.some(row=>row.is_sample)
+  function openStage(value) { reset(); setStage(value); navigate(pathFor('applications')) }
+  const trySamples = () => api.addSamples().then(reset).catch(showFailure)
+  const clearSamples = () => api.clearSamples().then(() => { reset(); setNotice({text:'Sample data cleared.'}) }).catch(showFailure)
   if (loading) return <LoadingSkeleton />
-  return <main className="tracker">
-    <header className="masthead"><div><p className="eyebrow">Jobs · Internships · Opportunities</p><h1>Application<br/>Tracker</h1></div>
-      <div className="header-tools"><Link to={user ? '/account' : '/login'} className="device-link" aria-label="Account and workspace settings">
-        <Icon name="device" size={16}/><span>{user ? 'My account' : 'On this device'}</span></Link>
-        <button className="icon-button theme" aria-label={'Theme: ' + theme.mode + '. Change theme'} title={'Theme: ' + theme.mode}
-          onClick={theme.cycle}><Icon name="theme" /></button></div></header>
+  return <div className="workspace"><WorkspaceNav active={tab} pathFor={pathFor} user={user} count={items.length} theme={theme}/>
+    <main className="workspace-main"><header className="page-head"><div>
+      <p className="page-date">{new Date(today+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</p>
+      <h1>{tabs[tab]}</h1></div>
+      {tab!=='account' && <button className="btn global-add" onClick={openNew}><Icon name="plus" size={17}/>Log application</button>}
+    </header>
     {user && <div className="sync-line" role="status"><i className={pending ? 'working' : status === 'Live' ? 'live' : ''}/>
       {pending ? 'Saving changes…' : error ? 'Sync needs attention' : status === 'Live' ? 'Live sync' : status}</div>}
+    {error && <div className="note" role="alert">{error}<button onClick={api.refresh}>Retry</button></div>}
+    <div className="page-content" key={tab}>
+    {tab==='dashboard' && <Dashboard rows={rows} items={items} openStage={openStage} openAgenda={()=>navigate(pathFor('follow-ups'))}
+      edit={setEditor} onSamples={trySamples} onNew={openNew}/>}
+    {tab==='follow-ups' && <Agenda items={items} actions={actions}/>}
+    {tab==='account' && <div className="settings-stack">{user ? <Account user={user}/> :
+      <section className="surface settings-panel"><h2>Device workspace</h2><p>Your applications are saved in this browser. Sign in to use an account across devices.</p>
+      <Link className="btn ghost" to="/login">Sign in or create account</Link></section>}
+      <section className="surface settings-panel"><h2>Appearance</h2><button className="soft-button" onClick={theme.cycle}>Theme · {theme.mode}</button></section>
+      {(samples || !rows.length) && <section className="surface settings-panel"><h2>Sample applications</h2>
+        <button className="soft-button" onClick={samples ? clearSamples : trySamples}>{samples?'Clear sample data':'Try with sample data'}</button></section>}</div>}
+    {tab==='applications' && <>
     <StageTiles rows={rows} selected={stage} onChange={setStage} />
-    <div ref={quick}><QuickAdd onNew={openNew} onQuick={async value => {
+    <div ref={quick}><QuickAdd onQuick={async value => {
       const row = await api.add({ ...quickFields(value), stage:'Saved' })
       reset(); setEditor(row); setHighlight({id:row.id}); setNotice({text:'Saved for later.'})
     }} /></div>
-    {error && <div className="note" role="alert">{error}<button onClick={api.refresh}>Retry</button></div>}
     {rows.length > 0 && <FilterBar query={query} setQuery={setQuery} type={type} setType={setType} due={due} setDue={setDue}
       count={rows.filter(row => followUp(row,today)).length} view={view} searchRef={search} setView={v => {
         setView(v); try { localStorage.setItem('application-tracker.view',v) } catch { /* Session preference remains active. */ }
       }} />}
     {(stage || type || due || term) && <div className="active-filters"><span>{visible.length} of {rows.length} shown</span>
       <button onClick={reset}>Clear filters</button></div>}
-    {rows.some(row => row.is_sample) && <aside className="note"><span>You’re looking at sample data. Edit it or move a card to try the flow.</span>
-      <button onClick={() => api.clearSamples().then(() => { reset(); setNotice({text:'Sample data cleared.'}) }).catch(showFailure)}>Clear sample data</button></aside>}
+    {samples && <div className="sample-line"><span>Includes sample applications</span><button onClick={clearSamples}>Clear sample data</button></div>}
     {error && !rows.length ? null : !visible.length ? <EmptyState filtered={rows.length > 0} onNew={openNew} onReset={reset}
       onSamples={() => api.addSamples().then(reset).catch(showFailure)} /> :
       view === 'board' ? <Board rows={visible} stage={stage} actions={actions} today={today}/> :
       <ListView rows={visible} actions={actions} today={today}/>}
-    <button className="fab" aria-label="Log application" onClick={openNew}><Icon name="plus" size={24}/></button>
+    </>}</div>
+    {tab!=='account' && <button className="fab" aria-label="Log application" onClick={openNew}><Icon name="plus" size={24}/></button>}
     {editor && <EditorSheet key={editor.id || 'new'} initial={editor} onClose={() => setEditor(null)}
       onSave={async (id,fields) => {
         const stored = id ? await api.update(id,fields,editor.updated_at) : await api.add(fields)
@@ -4849,7 +5106,7 @@ export default function Tracker({ theme, user }) {
       }} onDelete={async id => { await api.remove(id,editor.updated_at); setNotice({text:'Application deleted.'}) }} />}
     {moving && <MoveSheet row={moving} onMove={move} onClose={() => setMoveId(null)} />}
     <Toast notice={notice} onDismiss={dismiss}/>
-  </main>
+  </main></div>
 }
 ````
 
@@ -5151,6 +5408,136 @@ kbd { display: none; font: 11px var(--mono); padding: 1px 5px; border: 1px solid
 .toast { animation: toast-in .18s ease-out; }
 @keyframes toast-in { from { opacity: 0; translate: 0 6px; } to { opacity: 1; translate: 0 0; } }
 @keyframes sync-pulse { from { opacity: .4; } to { opacity: 1; } }
+````
+
+## `src/styles/workspace.css`
+
+````css
+/* The workspace has one navigation surface and one primary action per screen. */
+.workspace { --rail: 224px; min-height: 100dvh; }
+.brand { display:inline-flex; align-items:center; gap:10px; font:700 21px/1 var(--hd); letter-spacing:.01em; white-space:nowrap; }
+.brand-mark { display:inline-flex; align-items:flex-end; justify-content:center; gap:3px; width:30px; height:30px; padding:6px 5px; background:#242743; border-radius:4px; }
+.brand-mark i { width:4px; background:#9095ff; height:12px; }.brand-mark i:nth-child(2){height:17px;background:#dadcff}.brand-mark i:nth-child(3){height:9px;background:#6cd7b5}
+.workspace-nav { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:max(8px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 8px max(16px,env(safe-area-inset-left)); background:var(--panel); border-bottom:1px solid var(--line); }
+.brand-link { display:flex; align-items:center; text-decoration:none; color:var(--ink); }
+.main-tabs { display:grid; grid-template-columns:repeat(4,1fr); position:fixed; z-index:5; bottom:0; left:0; right:0; background:var(--panel); padding:4px max(4px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(4px,env(safe-area-inset-left)); border-top:1px solid var(--line); }
+.tab-link { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:50px; gap:2px; color:var(--mute); text-decoration:none; font:500 11px var(--body); border-radius:4px; }
+.tab-link[aria-current="page"] { background:color-mix(in srgb,var(--acc) 10%,var(--panel)); color:var(--acc); }
+.tab-link small { position:absolute; top:-1px; right:18%; background:var(--p2); color:var(--ink); padding:1px 4px; font:10px var(--mono); border-radius:3px; }
+.workspace-identity, .theme-control span, .theme-control small { display:none; }
+.theme-control,.row-arrow,.summary-head button { display:inline-flex; align-items:center; justify-content:center; min-width:44px; min-height:44px; background:transparent; color:inherit; border:0; border-radius:4px; }
+.workspace-main { min-width:0; max-width:1510px; margin:0 auto; padding:22px max(15px,env(safe-area-inset-right)) calc(138px + env(safe-area-inset-bottom)) max(15px,env(safe-area-inset-left)); }
+.page-head,.section-top,.summary-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.page-head { margin-bottom:18px; }
+.page-head h1,.auth-form-card h1 { margin:5px 0 0; font:700 clamp(40px,5vw,60px)/1 var(--hd); letter-spacing:-.025em; text-transform:none; }
+.page-date { margin:0; color:var(--mute); font:500 11px/1.4 var(--mono); }
+.global-add { display:none; }
+.workspace .fab { bottom:calc(70px + env(safe-area-inset-bottom)); }
+.workspace .toast { bottom:calc(134px + env(safe-area-inset-bottom)); }
+.workspace .sync-line { margin: -10px 0 12px; }
+.page-content { animation:enter .2s ease-out; }
+.dashboard-grid,.settings-stack { display:grid; gap:14px; min-width:0; }
+.surface,.pipeline-summary { min-width:0; background:var(--panel); border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+.surface h2,.pipeline-summary h2,.embedded-account h2 { font:600 24px/1.1 var(--hd); text-transform:none; margin:0; letter-spacing:0; }
+.section-top { padding:8px 15px; min-height:58px; border-bottom:1px solid var(--line); }
+.text-action,.sample-line button,.back-login,.auth-foot a { display:inline-flex; align-items:center; justify-content:center; gap:6px; font-size:12px; font-weight:600; background:none; color:var(--acc); border:0; text-decoration:none; }
+.text-action:hover,.auth-foot a:hover,.back-login:hover { text-decoration:underline; }
+.pipeline-summary { padding:15px 16px 6px; background-color:#202239; color:#fafaff; border-color:#353751; background-image:radial-gradient(ellipse at 100% 0, #43487766, transparent 65%),linear-gradient(#d8dcff0a 1px,transparent 1px),linear-gradient(90deg,#d8dcff0a 1px,transparent 1px);background-size:auto,24px 24px,24px 24px; }
+.summary-head button { color:#d7d9ff; border:1px solid #ffffff2b; }
+.pipeline-total { padding-block:10px 13px; display:flex; align-items:baseline; gap:10px; }
+.pipeline-total strong { font:600 74px/.98 var(--hd); font-variant-numeric:tabular-nums; }
+.pipeline-total span { color:#c7c9df; font-size:13px; }
+.distribution { display:flex; gap:0; height:7px; background:#ffffff20; }
+.distribution i { background:var(--stage); transition:flex .35s ease; }
+.stage-legend { display:grid; grid-template-columns:1fr 1.03fr 1.45fr .85fr .87fr; margin-top:8px; }
+.stage-legend button { min-width:0; display:grid; justify-items:start; gap:3px; padding:7px 0; border:0; background:none; color:#e0e1f0; text-align:left; }
+.stage-legend button:hover { color:white; text-decoration:underline; }
+.stage-legend span { font:500 12px var(--hd); white-space:nowrap; }
+.stage-legend b { font:600 20px var(--hd); }
+.stage-legend i,.stage-label i { display:inline-block; background:var(--stage); width:5px; height:5px; margin-right:4px; vertical-align:middle; }
+.quiet,.first-entry { padding:24px 18px; }
+.quiet>svg { width:32px;height:32px; padding:7px; color:var(--acc); background:color-mix(in srgb,var(--acc) 9%,var(--panel)); border-radius:4px; }
+.quiet h3,.first-entry h3 { margin:8px 0 3px; font:600 22px var(--hd); }
+.quiet p,.first-entry p,.settings-panel p { color:var(--mute); margin:0 0 6px; font-size:13px; }
+.first-entry>div { display:flex; flex-wrap:wrap; gap:12px; margin-top:14px; }
+.action-row,.recent-row { display:flex; align-items:center; gap:10px; padding:7px 14px; border-bottom:1px solid var(--line); }
+.action-row:last-child,.recent-row:last-child { border-bottom:0; }
+.action-symbol,.company-monogram { flex:none; width:31px; height:34px; display:grid; place-items:center; background:var(--p2); border-radius:3px; color:var(--mute); }
+.action-symbol { color:var(--acc); background:color-mix(in srgb,var(--acc) 10%,var(--panel)); }
+.deadline .action-symbol { color:var(--warn-ink); background:color-mix(in srgb,var(--gold) 12%,var(--panel)); }
+.row-title,.recent-name { flex:1; min-width:0; overflow-wrap:anywhere; text-align:left; }
+.row-title { border:none; background:none; padding:5px 0; }
+.row-title b,.recent-name b { font-weight:600; font-size:14px; display:block; }
+.row-title small,.recent-name small { display:block; color:var(--mute); font-size:12px; }
+.row-arrow { color:var(--mute); }
+.row-arrow:hover,.recent-row:hover { background:var(--p2); }
+.recent-row { width:100%; background:none; color:var(--ink); border-width:0 0 1px; border-style:solid; border-radius:0; min-height:64px; }
+.company-monogram { color:var(--ink); background:color-mix(in srgb,var(--stage) 14%,var(--p2)); font:600 17px var(--hd); }
+.stage-label { font:11px var(--mono); color:var(--mute); }
+.recent-date,.recent-row>svg { display:none; }
+.soft-button { border:1px solid var(--line); background:var(--panel); border-radius:4px; color:var(--ink); font-size:12px; padding-inline:12px; }
+.soft-button:hover { border-color:var(--acc); }
+.queue-tabs { display:flex; gap:5px; padding:8px 14px; }
+.queue-tabs button { border:0; padding:0 10px; font:500 13px var(--body); color:var(--mute); background:none; border-radius:4px; }
+.queue-tabs [aria-pressed=true] { color:var(--acc); background:color-mix(in srgb,var(--acc) 9%,var(--panel)); }
+.settings-stack { max-width:720px; }.settings-panel { padding:20px; }.settings-panel p { margin:10px 0; }.settings-panel button { margin-top:10px; }
+.embedded-account { padding:0; margin:0; max-width:none; }.embedded-account .account-panel { margin:0; }
+.sample-line { display:flex; gap:12px; justify-content:space-between; align-items:center; font-size:12px; color:var(--mute); }
+.workspace .tiles { margin-top:0; }
+@media(min-width:760px){
+  .workspace { display:grid; grid-template-columns:var(--rail) minmax(0,1fr); align-items:start; }
+  .workspace-nav { position:sticky; top:0; flex-direction:column; align-items:stretch; justify-content:flex-start; height:100dvh; padding:22px 13px 12px; border:0; border-right:1px solid var(--line); }
+  .brand-link { margin-bottom:28px; padding-left:6px; }.brand { font-size:20px; }
+  .main-tabs { position:static; display:flex; flex-direction:column; padding:0; gap:4px; border:0; }
+  .tab-link { flex-direction:row; justify-content:flex-start; padding:0 12px; min-height:46px; gap:12px; font-size:13px; }
+  .tab-link:hover { background:var(--p2); }.tab-link small { position:static; margin-left:auto; }
+  .workspace-identity { display:flex; margin-top:auto; align-items:center; gap:10px; border-top:1px solid var(--line); padding:18px 4px 8px; }
+  .workspace-identity>div { min-width:0; }.workspace-identity b,.workspace-identity small { display:block;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }.workspace-identity small { color:var(--mute); font-size:10px; }
+  .theme-control { gap:8px; justify-content:flex-start; padding:0 6px; }.theme-control span,.theme-control small { display:inline; }.theme-control small { margin-left:auto; color:var(--mute); text-transform:capitalize; }
+  .workspace-main { width:100%; padding:clamp(24px,3vw,50px); }.workspace .fab { display:none; }.global-add { display:inline-flex; }
+  .workspace .toast { bottom:24px; }.page-head { margin-bottom:24px; }.workspace .sync-line { margin-top:-16px; }
+  .recent-date,.recent-row>svg { display:block; color:var(--mute); }.recent-date { width:76px; font:11px var(--mono); text-align:right; }.recent-row { padding-inline:20px; gap:16px; }
+  .stage-label { min-width:100px; }.section-top { padding:10px 20px; }
+}
+@media(min-width:1080px){
+  .dashboard-grid { grid-template-columns:minmax(0,1.35fr) minmax(270px,1fr); gap:18px; }.recent {grid-column:1/-1;}
+  .pipeline-summary { padding:20px 24px 14px; }.stage-legend span { font:11px var(--mono); }.pipeline-total { padding-block:18px; }
+}
+
+/* Authentication uses the same stage palette and grid as the live pipeline. */
+.auth-layout { min-height:100dvh; display:grid; align-content:center; }
+.auth-art { display:none; }
+.auth-form-area { width:100%; padding:22px max(19px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(19px,env(safe-area-inset-left)); }
+.auth-form-card { max-width:390px; margin:auto; }
+.mobile-brand { margin:0 0 28px; }
+.auth-tabs { display:grid; grid-template-columns:1fr 1fr; gap:4px; background:var(--p2); padding:4px; border-radius:5px; border:1px solid var(--line); margin-bottom:24px; }
+.auth-tabs a { display:grid; place-items:center; text-decoration:none; font-weight:600; font-size:13px; color:var(--mute); border-radius:3px; }
+.auth-tabs [aria-current=page] { background:var(--panel); color:var(--ink); box-shadow:0 1px 4px #10172b18; }
+.auth-form-card h1 { font-size:44px; }.auth-caption { margin:8px 0 22px; color:var(--mute); }
+.auth-form fieldset { display:grid; gap:13px; padding:0; margin:0; min-width:0; border:0; }
+.auth-field { display:grid; gap:6px; font:600 13px var(--body); }
+.auth-field input { width:100%; background:var(--panel); min-height:46px; font:400 16px var(--body); }
+.password-wrap { display:flex; align-items:stretch; position:relative; }.password-wrap input { padding-right:45px; }
+.password-wrap button { position:absolute; right:1px; top:1px; min-width:44px; background:transparent; color:var(--mute); border:0; }
+.forgot-link,.back-login,.auth-foot a { display:inline-flex; align-items:center; font-weight:600; font-size:13px; text-decoration:none; }
+.forgot-link { justify-self:end; margin-block:-8px; }.field-help { color:var(--mute); font-size:12px; margin:-8px 0 0; }
+.auth-primary { width:100%; justify-content:space-between; }.auth-primary,.google-btn { min-height:46px; }
+.auth-foot { border-top:1px solid var(--line); padding-top:10px; margin-top:20px; }
+.auth-foot summary { font-size:12px; color:var(--mute); padding-block:12px; }.auth-foot p { margin:0 0 8px; font-size:13px; }
+.sent-actions { display:grid; gap:8px; }.auth-form-card { animation:enter .22s ease-out; }
+@media(min-width:820px){
+  .auth-layout { grid-template-columns:minmax(310px,.9fr) minmax(450px,1.1fr); align-content:stretch; background:var(--panel); }
+  .auth-art { display:flex; flex-direction:column; padding:clamp(30px,5vw,76px); color:#f6f6ff; background-color:#202239;
+    background-image:radial-gradient(ellipse at 90% 15%,#575b984d,transparent 65%),linear-gradient(#fff1 1px,transparent 1px),linear-gradient(90deg,#fff1 1px,transparent 1px); background-size:auto,44px 44px,44px 44px; }
+  .auth-art .brand-mark { background:#464b76; }.art-content { margin:auto 0; padding-block:36px; }.art-content h2 { font:700 clamp(64px,8vw,117px)/.85 var(--hd); letter-spacing:-.04em; margin:0; }.art-content h2 span { color:#9399ff; }
+  .art-content p { color:#c4c7df; max-width:300px; }.paper-stack { height:134px; width:min(100%,365px); position:relative; margin-top:48px; }
+  .paper { position:absolute; width:56%; height:87px; background:#2e324e; box-shadow:0 5px 16px #0c0d1e45; border:1px solid #565a7d; border-left:4px solid var(--stage); border-radius:4px; padding:12px; }
+  .paper-1 { top:22px; left:21%; background:#343955; }.paper-2 { top:44px;left:42%; background:#3c4160; }
+  .paper div { color:#f6f5ff; font:600 16px var(--hd); }.paper span { display:block; height:3px; background:#757994; margin-top:8px; width:72%; }.paper span:last-child {width:43%;}
+  .auth-form-area { align-self:center; padding:32px; }.mobile-brand { display:none; }
+}
+
+@media (min-width:700px) and (max-width:759px) { .workspace .fab { display:inline-flex; } }
 ````
 
 ## `supabase/config.toml`
@@ -5728,6 +6115,24 @@ select is((select last_followed_up_at::date from public.applications),current_da
 select is((select applied_date from public.applications),(select applied_date from before_follow),'Original application date survives follow-up');
 select * from finish();
 rollback;
+````
+
+## `tests/agenda.test.js`
+
+````js
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { nextActions } from '../src/lib/agenda.js'
+
+test('agenda prioritizes overdue and imminent deadlines, then follow-ups, then the week ahead',() => {
+  const today='2026-11-24'
+  const saved=day=>({company:'Company',stage:'Saved',deadline:'2026-'+day})
+  const waiting={company:'Waiting',stage:'Applied',stage_changed_at:'2026-11-11T12:00:00'}
+  const recent={...waiting,last_followed_up_at:'2026-11-22T12:00:00'}
+  const result=nextActions([saved('12-02'),saved('11-30'),recent,waiting,saved('11-22'),saved('11-25'),
+    {...saved('11-24'),stage:'Closed'}],today)
+  assert.deepEqual(result.map(x=>x.row),[saved('11-22'),saved('11-25'),waiting,saved('11-30')])
+})
 ````
 
 ## `tests/reminders.test.js`

@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useApplications } from '../hooks/useApplications.js'
 import { blank, followUp, localDate, quickFields, sortedRows } from '../lib/utils.js'
 import LoadingSkeleton from '../components/LoadingSkeleton.jsx'
+import WorkspaceNav, { tabs } from '../components/WorkspaceNav.jsx'
+import Dashboard from './Dashboard.jsx'
+import Account from './Account.jsx'
+import Agenda from '../components/Agenda.jsx'
+import { nextActions } from '../lib/agenda.js'
 import Board from '../components/Board.jsx'
 import ListView from '../components/ListView.jsx'
 import StageTiles from '../components/StageTiles.jsx'
@@ -14,7 +19,19 @@ import Toast from '../components/Toast.jsx'
 import EditorSheet from '../components/EditorSheet.jsx'
 import MoveSheet from '../components/MoveSheet.jsx'
 
-export default function Tracker({ theme, user }) {
+export default function Tracker({ theme, user, tab }) {
+  const navigate = useNavigate()
+  const focusAfterNav = useRef(false)
+  const pathFor = useCallback(section => user ? '/' + section : section === 'dashboard' ? '/local' : '/local/' + section,[user])
+  useEffect(() => {
+    document.title = tabs[tab] + ' · Application Tracker'
+    window.scrollTo(0,0)
+    if (tab==='applications' && focusAfterNav.current) {
+      focusAfterNav.current=false
+      const field=search.current || quick.current?.querySelector('input')
+      field?.focus()
+    }
+  },[tab])
   const { rows, error, api, loading, pending, status } = useApplications(user?.id)
   const [stage,setStage] = useState('')
   const [type,setType] = useState('')
@@ -42,12 +59,16 @@ export default function Tracker({ theme, user }) {
     const keydown = e => {
       if (editor || moveId || e.isComposing || e.repeat || e.altKey || e.metaKey || e.ctrlKey ||
         e.target.closest('input,textarea,select,[contenteditable="true"]')) return
-      if (e.key === '/') { e.preventDefault(); (search.current || quick.current?.querySelector('input'))?.focus() }
+      if (e.key === '/') {
+        e.preventDefault()
+        if (tab !== 'applications') { focusAfterNav.current=true; navigate(pathFor('applications')) }
+        else (search.current || quick.current?.querySelector('input'))?.focus()
+      }
       if (e.key === 'n') { e.preventDefault(); setEditor(blank('Applied')) }
     }
     window.addEventListener('keydown',keydown)
     return () => window.removeEventListener('keydown',keydown)
-  },[editor,moveId])
+  },[editor,moveId,tab,navigate,pathFor])
   useEffect(() => {
     if (!highlight) return
     const timeout = setTimeout(() => setHighlight(null),1200)
@@ -59,7 +80,7 @@ export default function Tracker({ theme, user }) {
     await api.update(id,{stage:target})
     setHighlight({id})
     setNotice({text:'Moved to ' + target + '.', action:'Show stage', onAction:() => {
-      reset(); setStage(target); setNotice(null)
+      openStage(target); setNotice(null)
     }})
   }
   const actions = { highlight:highlight?.id, edit:setEditor, pick:row => setMoveId(row.id),
@@ -73,34 +94,50 @@ export default function Tracker({ theme, user }) {
   const visible = sortedRows(rows.filter(row => (!stage || row.stage === stage) && (!type || row.type === type) &&
     (!due || followUp(row,today)) && [row.company,row.role,row.notes,row.location].join(' ').toLocaleLowerCase().includes(term)))
   const moving = rows.find(row => row.id === moveId)
+  const items = nextActions(rows,today)
+  const samples = rows.some(row=>row.is_sample)
+  function openStage(value) { reset(); setStage(value); navigate(pathFor('applications')) }
+  const trySamples = () => api.addSamples().then(reset).catch(showFailure)
+  const clearSamples = () => api.clearSamples().then(() => { reset(); setNotice({text:'Sample data cleared.'}) }).catch(showFailure)
   if (loading) return <LoadingSkeleton />
-  return <main className="tracker">
-    <header className="masthead"><div><p className="eyebrow">Jobs · Internships · Opportunities</p><h1>Application<br/>Tracker</h1></div>
-      <div className="header-tools"><Link to={user ? '/account' : '/login'} className="device-link" aria-label="Account and workspace settings">
-        <Icon name="device" size={16}/><span>{user ? 'My account' : 'On this device'}</span></Link>
-        <button className="icon-button theme" aria-label={'Theme: ' + theme.mode + '. Change theme'} title={'Theme: ' + theme.mode}
-          onClick={theme.cycle}><Icon name="theme" /></button></div></header>
+  return <div className="workspace"><WorkspaceNav active={tab} pathFor={pathFor} user={user} count={items.length} theme={theme}/>
+    <main className="workspace-main"><header className="page-head"><div>
+      <p className="page-date">{new Date(today+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</p>
+      <h1>{tabs[tab]}</h1></div>
+      {tab!=='account' && <button className="btn global-add" onClick={openNew}><Icon name="plus" size={17}/>Log application</button>}
+    </header>
     {user && <div className="sync-line" role="status"><i className={pending ? 'working' : status === 'Live' ? 'live' : ''}/>
       {pending ? 'Saving changes…' : error ? 'Sync needs attention' : status === 'Live' ? 'Live sync' : status}</div>}
+    {error && <div className="note" role="alert">{error}<button onClick={api.refresh}>Retry</button></div>}
+    <div className="page-content" key={tab}>
+    {tab==='dashboard' && <Dashboard rows={rows} items={items} openStage={openStage} openAgenda={()=>navigate(pathFor('follow-ups'))}
+      edit={setEditor} onSamples={trySamples} onNew={openNew}/>}
+    {tab==='follow-ups' && <Agenda items={items} actions={actions}/>}
+    {tab==='account' && <div className="settings-stack">{user ? <Account user={user}/> :
+      <section className="surface settings-panel"><h2>Device workspace</h2><p>Your applications are saved in this browser. Sign in to use an account across devices.</p>
+      <Link className="btn ghost" to="/login">Sign in or create account</Link></section>}
+      <section className="surface settings-panel"><h2>Appearance</h2><button className="soft-button" onClick={theme.cycle}>Theme · {theme.mode}</button></section>
+      {(samples || !rows.length) && <section className="surface settings-panel"><h2>Sample applications</h2>
+        <button className="soft-button" onClick={samples ? clearSamples : trySamples}>{samples?'Clear sample data':'Try with sample data'}</button></section>}</div>}
+    {tab==='applications' && <>
     <StageTiles rows={rows} selected={stage} onChange={setStage} />
-    <div ref={quick}><QuickAdd onNew={openNew} onQuick={async value => {
+    <div ref={quick}><QuickAdd onQuick={async value => {
       const row = await api.add({ ...quickFields(value), stage:'Saved' })
       reset(); setEditor(row); setHighlight({id:row.id}); setNotice({text:'Saved for later.'})
     }} /></div>
-    {error && <div className="note" role="alert">{error}<button onClick={api.refresh}>Retry</button></div>}
     {rows.length > 0 && <FilterBar query={query} setQuery={setQuery} type={type} setType={setType} due={due} setDue={setDue}
       count={rows.filter(row => followUp(row,today)).length} view={view} searchRef={search} setView={v => {
         setView(v); try { localStorage.setItem('application-tracker.view',v) } catch { /* Session preference remains active. */ }
       }} />}
     {(stage || type || due || term) && <div className="active-filters"><span>{visible.length} of {rows.length} shown</span>
       <button onClick={reset}>Clear filters</button></div>}
-    {rows.some(row => row.is_sample) && <aside className="note"><span>You’re looking at sample data. Edit it or move a card to try the flow.</span>
-      <button onClick={() => api.clearSamples().then(() => { reset(); setNotice({text:'Sample data cleared.'}) }).catch(showFailure)}>Clear sample data</button></aside>}
+    {samples && <div className="sample-line"><span>Includes sample applications</span><button onClick={clearSamples}>Clear sample data</button></div>}
     {error && !rows.length ? null : !visible.length ? <EmptyState filtered={rows.length > 0} onNew={openNew} onReset={reset}
       onSamples={() => api.addSamples().then(reset).catch(showFailure)} /> :
       view === 'board' ? <Board rows={visible} stage={stage} actions={actions} today={today}/> :
       <ListView rows={visible} actions={actions} today={today}/>}
-    <button className="fab" aria-label="Log application" onClick={openNew}><Icon name="plus" size={24}/></button>
+    </>}</div>
+    {tab!=='account' && <button className="fab" aria-label="Log application" onClick={openNew}><Icon name="plus" size={24}/></button>}
     {editor && <EditorSheet key={editor.id || 'new'} initial={editor} onClose={() => setEditor(null)}
       onSave={async (id,fields) => {
         const stored = id ? await api.update(id,fields,editor.updated_at) : await api.add(fields)
@@ -110,5 +147,5 @@ export default function Tracker({ theme, user }) {
       }} onDelete={async id => { await api.remove(id,editor.updated_at); setNotice({text:'Application deleted.'}) }} />}
     {moving && <MoveSheet row={moving} onMove={move} onClose={() => setMoveId(null)} />}
     <Toast notice={notice} onDismiss={dismiss}/>
-  </main>
+  </main></div>
 }

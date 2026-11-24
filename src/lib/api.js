@@ -21,6 +21,9 @@ export const signIn = async (email, password) => checked(await db().auth.signInW
 export const signUp = async (email, password) => checked(await db().auth.signUp({
   email, password, options: { emailRedirectTo: redirect('/auth/callback') },
 }))
+export const resendConfirmation = async email => checked(await db().auth.resend({
+  type:'signup', email, options:{emailRedirectTo:redirect('/auth/callback')},
+}))
 export const google = async () => checked(await db().auth.signInWithOAuth({
   provider: 'google', options: { redirectTo: redirect('/auth/callback') },
 }))

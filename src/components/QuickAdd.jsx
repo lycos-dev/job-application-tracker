@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
-import Icon from './Icon.jsx'
-export default function QuickAdd({ onQuick, onNew }) {
+export default function QuickAdd({ onQuick }) {
   const [text,setText] = useState('')
   const [error,setError] = useState('')
   const pending = useRef(false)
@@ -14,6 +13,5 @@ export default function QuickAdd({ onQuick, onNew }) {
     <input aria-label="Quick save" placeholder="Job link or company" value={text}
       onChange={e => { setText(e.target.value); setError('') }} required />
     <button className="btn">Save for later</button>
-    <button type="button" className="btn ghost log-top" onClick={onNew}><Icon name="plus" size={16}/>Log application</button>
   </form>{error && <p className="error" role="alert">{error}</p>}</>
 }

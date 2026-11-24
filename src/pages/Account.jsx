@@ -28,8 +28,8 @@ export default function Account({ user }) {
     setBusy(true); setError(''); setMessage('')
     try { await fn() } catch (e) { setError(e.message) } finally { setBusy(false) }
   }
-  return <main className="account"><Link className="back" to="/">← Back to tracker</Link>
-    <section className="account-panel"><h1>Your account</h1><p>{user.email}</p>
+  return <div className="account embedded-account">
+    <section className="account-panel"><h2>Account details</h2><p>{user.email}</p>
       <section><h2>Email reminders</h2><p>Get one daily email when a Saved deadline is within three days or an Applied item needs a follow-up.</p>
         <label className="check"><input type="checkbox" checked={enabled} disabled={!ready || busy}
           onChange={e => { const value = e.target.checked; run(async () => {
@@ -52,5 +52,5 @@ export default function Account({ user }) {
       {error && <p role="alert" className="error">{error}</p>}
       <div className="account-controls"><Link to="/reset-password">Change password</Link>
         <button className="btn ghost" disabled={busy} onClick={() => run(async () => { await api.signOut(); navigate('/login',{replace:true}) })}>Sign out</button></div>
-    </section></main>
+    </section></div>
 }

@@ -11,7 +11,30 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:5173. With both Supabase variables empty, the tracker opens in device mode. Your earlier frontend data is still available on the same browser origin. Once cloud configuration is present, the root route requires sign-in. The independent device workspace remains at /local. Account → Import device applications copies personal rows only after confirmation and preserves their dates. Repeating an import skips already imported IDs, including locally edited versions.
+Open http://localhost:5173. Choose **Continue on this device** to explore the app immediately with browser storage. Your previous device applications stay available at the same browser origin. On the dashboard choose **Try with sample data** for a populated preview.
+
+## Log in and sign up locally
+
+1. Install the Supabase CLI and start Docker Desktop (or a compatible Docker runtime).
+2. Stop any Vite server already using port 5173. From the repository root run:
+   ```sh
+   npm run dev:local
+   ```
+3. Open http://localhost:5173 and select **Sign up**. Enter an email and matching passwords. The launcher prints the URL of the local email inbox. Open the confirmation email there, in the same browser. Test **Log in**, **Forgot password?** and **Sign out** against this local project.
+4. The launcher starts Supabase, applies pending local migrations and passes its local API URL and public key to Vite for this session. Existing env files stay intact. Stop Vite with Ctrl+C. Run `npm run db:stop` when finished with the local backend.
+
+Google sign-in needs a Google OAuth client, even during local testing. The Google provider setup is described below. Device storage and account storage are independent. In a signed-in workspace, Settings → Import device applications copies personal rows after confirmation. Previously imported IDs are skipped.
+
+## Workspace navigation
+
+| Tab | What you can do |
+| --- | --- |
+| Dashboard | See all five stage totals, click a stage to open its board filter, review the three next actions, or reopen one of the four most recently updated applications. |
+| Applications | Quick-save a link, log an application, edit details, search, filter, switch between board and list, or move a card. |
+| Follow-ups | Work through overdue and upcoming Saved deadlines (seven-day window) and Applied items due for a follow-up. Log a follow-up to remove it from the due queue. |
+| Settings | Change theme, manage sample data, access account controls, import device records, and opt into reminders. |
+
+The sidebar becomes a bottom navigation bar on phones. Each tab has its own URL and supports browser back, forward, and reload. On desktop, press / from any workspace tab to jump to search.
 
 ## Supabase setup
 
@@ -55,6 +78,7 @@ npm run lint
 npm test
 npm run build
 npm run preview
+npm run dev:local
 npm run db:start
 npm run db:test
 npm run db:lint
