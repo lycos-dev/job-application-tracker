@@ -1,4 +1,4 @@
-# Application Tracker
+# Roleward™ by Lycos Blanza
 
 One repository contains the Vite/React frontend at the root and the Postgres migrations, RLS policies, database tests, and optional reminder function under `supabase/`.
 
@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:5173. Choose **Continue on this device** to explore the app immediately with browser storage. Your previous device applications stay available at the same browser origin. On the dashboard choose **Try with sample data** for a populated preview.
+Set the two public Supabase variables in .env.local before starting Vite, or use the local-stack launcher below. Open http://localhost:5173 and sign in. Sample applications are available inside your account.
 
 ## Log in and sign up locally
 
@@ -20,10 +20,19 @@ Open http://localhost:5173. Choose **Continue on this device** to explore the ap
    ```sh
    npm run dev:local
    ```
-3. Open http://localhost:5173 and select **Sign up**. Enter an email and matching passwords. The launcher prints the URL of the local email inbox. Open the confirmation email there, in the same browser. Test **Log in**, **Forgot password?** and **Sign out** against this local project.
+3. Open http://localhost:5173 and select **Sign up**. Enter an email and matching passwords. The launcher prints the URL of the local email inbox. Confirm using the button in the email or enter its code in the app. Test **Log in**, **Forgot password?** and **Sign out** against this local project.
 4. The launcher starts Supabase, applies pending local migrations and passes its local API URL and public key to Vite for this session. Existing env files stay intact. Stop Vite with Ctrl+C. Run `npm run db:stop` when finished with the local backend.
 
-Google sign-in needs a Google OAuth client, even during local testing. The Google provider setup is described below. Device storage and account storage are independent. In a signed-in workspace, Settings → Import device applications copies personal rows after confirmation. Previously imported IDs are skipped.
+Google sign-in needs a Google OAuth client, even during local testing. The Google provider setup is described below. If a previous release saved applications on this browser, Settings → Import device applications copies personal rows after confirmation. Previously imported IDs are skipped.
+
+## Update your existing deployment
+
+1. Copy this release into the existing repository root and deploy it to Vercel. Keep your existing Supabase project and data. No database migration is required for this release.
+2. In Supabase → Authentication → URL Configuration, use your live Vercel origin as **Site URL**. Add the exact production URLs ending in **/auth/callback** and **/reset-password** to Redirect URLs. Add the same paths on localhost or trusted preview domains if you use them.
+3. In Authentication → Email Templates, replace **Confirm signup** with the entire contents of `supabase/templates/confirmation.html` and **Reset password** with `supabase/templates/recovery.html`. Save each template. These templates use the app-supplied return URL, a one-time token hash, and a numeric code. A link opens the app and waits for a click before verification. A code also works in another browser. Hosted templates must be saved in the dashboard even if local templates are configured.
+4. Enable Email and Confirm email under Authentication → Sign In / Providers. For a public app, configure a verified sender with custom SMTP in Auth settings. The default Supabase mailer restricts recipients to your project team. Disable click tracking for auth emails at your mail provider. Inspect Auth logs and provider delivery logs if mail is missing.
+5. In Google Cloud, create an OAuth **Web application** client for Roleward. Add the production app origin to Authorized JavaScript origins. Add the Supabase callback displayed by the Google provider to Authorized redirect URIs. For this project it is `https://ftrmvinaswmnkmrkiazn.supabase.co/auth/v1/callback`. Save the client ID and secret in Supabase → Authentication → Sign In / Providers → Google and enable it. For public access, configure an external audience and publish the consent app when ready. While in Testing, add your testers in Google Cloud.
+6. On the deployed URL, sign up with a new address. Open the latest email on a second device and select **Confirm email**. For a second signup, test entering the emailed code. Then sign out and test password login, Google sign-in, cancellation, and password reset in a private window. Opening `/local` signed out should return to login. Close old app tabs and reopen if the installed app still shows the former branding.
 
 ## Workspace navigation
 
@@ -44,7 +53,7 @@ The sidebar becomes a bottom navigation bar on phones. Each tab has its own URL 
    supabase link --project-ref YOUR_PROJECT_REF
    supabase db push
    ```
-3. Copy .env.example to .env.local. Set VITE_SUPABASE_URL to the project URL and VITE_SUPABASE_ANON_KEY to the project's public anon JWT or publishable key. Restart Vite. Keep service-role, provider, and reminder secrets on the backend.
+3. Copy .env.example to .env.local. Set VITE_SUPABASE_URL to the project URL and VITE_SUPABASE_PUBLISHABLE_KEY to the project’s publishable key. The existing VITE_SUPABASE_ANON_KEY variable also works. Restart Vite. Keep service-role, provider, and reminder secrets on the backend.
 4. In Authentication → Sign In / Providers, enable Email. Turn on confirmation and configure production SMTP for confirmation and recovery mail. Set a minimum password length of at least eight. The app uses PKCE. Open email links in the same browser that requested them when using Supabase’s default templates.
 5. For Google, create a Web OAuth client in Google Cloud. Register the **Supabase callback URL displayed in the Google provider settings** as the authorized redirect URI. Paste the Google client ID and secret into the Supabase Google provider and enable it. The app returns from Supabase to /auth/callback.
 6. In Authentication → URL Configuration, set Site URL to the production Vercel origin. Add both /auth/callback and /reset-password on the production origin and on http://localhost:5173. Add http://localhost:5173 for local testing. For previews add the two paths using a wildcard restricted to **your project and Vercel team**, for example `https://your-project-*-your-team.vercel.app/auth/callback` and the corresponding /reset-password URL. Check the actual preview hostname pattern before saving.
@@ -58,7 +67,7 @@ To run the stack locally, start Docker and use `npm run db:start`. Read the loca
 2. Use the detected Vite preset, npm run build, dist output, and Node 22.12+ (Node 24 works). The lockfile is included.
 3. Set the two VITE_SUPABASE variables for Production and the Preview environments you use. Point previews at a separate Supabase project if using test data.
 4. Deploy, copy the assigned domain into Supabase Auth URL Configuration, and redeploy after any change to build-time env values. vercel.json rewrites SPA routes to index.html. Test by opening /login and /reset-password directly.
-5. The production build includes locally hosted fonts, a manifest, phone icons and a versioned offline shell. Install from the HTTPS site’s browser menu or iOS Share → Add to Home Screen. Hosted writes require connectivity. Cached cloud data is scoped by project and account, and cleared for the departing account on sign-out. Device-mode edits stay in their separate browser store.
+5. The production build includes locally hosted fonts, a manifest, phone icons and a versioned offline shell. Install from the HTTPS site’s browser menu or iOS Share → Add to Home Screen. Hosted writes require connectivity. Cached cloud data is scoped by project and account, and cleared for the departing account on sign-out.
 
 ## Workflow
 

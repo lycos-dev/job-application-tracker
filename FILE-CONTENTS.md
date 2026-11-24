@@ -1,19 +1,19 @@
-# Application Tracker · Source files
+# Roleward™ source files
 
-Paths are relative to the repository root. Fonts and icons are supplied as binary files.
+Each heading gives the path relative to the repository root.
 
 ## `.env.example`
 
-````text
-# Copy to .env.local for Vite. Set both variables in Vercel as well.
-# Use the public anon key from your Supabase project's API settings.
+````
+# Copy to .env.local for Vite. Set these public values in Vercel.
 VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
+VITE_SUPABASE_PUBLISHABLE_KEY=
+# Existing deployments may keep VITE_SUPABASE_ANON_KEY as the public-key variable.
 ````
 
 ## `.gitignore`
 
-````text
+````
 node_modules/
 dist/
 .vercel/
@@ -29,8 +29,8 @@ supabase/.branches/
 
 ## `README.md`
 
-````markdown
-# Application Tracker
+````
+# Roleward™ by Lycos Blanza
 
 One repository contains the Vite/React frontend at the root and the Postgres migrations, RLS policies, database tests, and optional reminder function under `supabase/`.
 
@@ -43,7 +43,7 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:5173. Choose **Continue on this device** to explore the app immediately with browser storage. Your previous device applications stay available at the same browser origin. On the dashboard choose **Try with sample data** for a populated preview.
+Set the two public Supabase variables in .env.local before starting Vite, or use the local-stack launcher below. Open http://localhost:5173 and sign in. Sample applications are available inside your account.
 
 ## Log in and sign up locally
 
@@ -52,10 +52,19 @@ Open http://localhost:5173. Choose **Continue on this device** to explore the ap
    ```sh
    npm run dev:local
    ```
-3. Open http://localhost:5173 and select **Sign up**. Enter an email and matching passwords. The launcher prints the URL of the local email inbox. Open the confirmation email there, in the same browser. Test **Log in**, **Forgot password?** and **Sign out** against this local project.
+3. Open http://localhost:5173 and select **Sign up**. Enter an email and matching passwords. The launcher prints the URL of the local email inbox. Confirm using the button in the email or enter its code in the app. Test **Log in**, **Forgot password?** and **Sign out** against this local project.
 4. The launcher starts Supabase, applies pending local migrations and passes its local API URL and public key to Vite for this session. Existing env files stay intact. Stop Vite with Ctrl+C. Run `npm run db:stop` when finished with the local backend.
 
-Google sign-in needs a Google OAuth client, even during local testing. The Google provider setup is described below. Device storage and account storage are independent. In a signed-in workspace, Settings → Import device applications copies personal rows after confirmation. Previously imported IDs are skipped.
+Google sign-in needs a Google OAuth client, even during local testing. The Google provider setup is described below. If a previous release saved applications on this browser, Settings → Import device applications copies personal rows after confirmation. Previously imported IDs are skipped.
+
+## Update your existing deployment
+
+1. Copy this release into the existing repository root and deploy it to Vercel. Keep your existing Supabase project and data. No database migration is required for this release.
+2. In Supabase → Authentication → URL Configuration, use your live Vercel origin as **Site URL**. Add the exact production URLs ending in **/auth/callback** and **/reset-password** to Redirect URLs. Add the same paths on localhost or trusted preview domains if you use them.
+3. In Authentication → Email Templates, replace **Confirm signup** with the entire contents of `supabase/templates/confirmation.html` and **Reset password** with `supabase/templates/recovery.html`. Save each template. These templates use the app-supplied return URL, a one-time token hash, and a numeric code. A link opens the app and waits for a click before verification. A code also works in another browser. Hosted templates must be saved in the dashboard even if local templates are configured.
+4. Enable Email and Confirm email under Authentication → Sign In / Providers. For a public app, configure a verified sender with custom SMTP in Auth settings. The default Supabase mailer restricts recipients to your project team. Disable click tracking for auth emails at your mail provider. Inspect Auth logs and provider delivery logs if mail is missing.
+5. In Google Cloud, create an OAuth **Web application** client for Roleward. Add the production app origin to Authorized JavaScript origins. Add the Supabase callback displayed by the Google provider to Authorized redirect URIs. For this project it is `https://ftrmvinaswmnkmrkiazn.supabase.co/auth/v1/callback`. Save the client ID and secret in Supabase → Authentication → Sign In / Providers → Google and enable it. For public access, configure an external audience and publish the consent app when ready. While in Testing, add your testers in Google Cloud.
+6. On the deployed URL, sign up with a new address. Open the latest email on a second device and select **Confirm email**. For a second signup, test entering the emailed code. Then sign out and test password login, Google sign-in, cancellation, and password reset in a private window. Opening `/local` signed out should return to login. Close old app tabs and reopen if the installed app still shows the former branding.
 
 ## Workspace navigation
 
@@ -76,7 +85,7 @@ The sidebar becomes a bottom navigation bar on phones. Each tab has its own URL 
    supabase link --project-ref YOUR_PROJECT_REF
    supabase db push
    ```
-3. Copy .env.example to .env.local. Set VITE_SUPABASE_URL to the project URL and VITE_SUPABASE_ANON_KEY to the project's public anon JWT or publishable key. Restart Vite. Keep service-role, provider, and reminder secrets on the backend.
+3. Copy .env.example to .env.local. Set VITE_SUPABASE_URL to the project URL and VITE_SUPABASE_PUBLISHABLE_KEY to the project’s publishable key. The existing VITE_SUPABASE_ANON_KEY variable also works. Restart Vite. Keep service-role, provider, and reminder secrets on the backend.
 4. In Authentication → Sign In / Providers, enable Email. Turn on confirmation and configure production SMTP for confirmation and recovery mail. Set a minimum password length of at least eight. The app uses PKCE. Open email links in the same browser that requested them when using Supabase’s default templates.
 5. For Google, create a Web OAuth client in Google Cloud. Register the **Supabase callback URL displayed in the Google provider settings** as the authorized redirect URI. Paste the Google client ID and secret into the Supabase Google provider and enable it. The app returns from Supabase to /auth/callback.
 6. In Authentication → URL Configuration, set Site URL to the production Vercel origin. Add both /auth/callback and /reset-password on the production origin and on http://localhost:5173. Add http://localhost:5173 for local testing. For previews add the two paths using a wildcard restricted to **your project and Vercel team**, for example `https://your-project-*-your-team.vercel.app/auth/callback` and the corresponding /reset-password URL. Check the actual preview hostname pattern before saving.
@@ -90,7 +99,7 @@ To run the stack locally, start Docker and use `npm run db:start`. Read the loca
 2. Use the detected Vite preset, npm run build, dist output, and Node 22.12+ (Node 24 works). The lockfile is included.
 3. Set the two VITE_SUPABASE variables for Production and the Preview environments you use. Point previews at a separate Supabase project if using test data.
 4. Deploy, copy the assigned domain into Supabase Auth URL Configuration, and redeploy after any change to build-time env values. vercel.json rewrites SPA routes to index.html. Test by opening /login and /reset-password directly.
-5. The production build includes locally hosted fonts, a manifest, phone icons and a versioned offline shell. Install from the HTTPS site’s browser menu or iOS Share → Add to Home Screen. Hosted writes require connectivity. Cached cloud data is scoped by project and account, and cleared for the departing account on sign-out. Device-mode edits stay in their separate browser store.
+5. The production build includes locally hosted fonts, a manifest, phone icons and a versioned offline shell. Install from the HTTPS site’s browser menu or iOS Share → Add to Home Screen. Hosted writes require connectivity. Cached cloud data is scoped by project and account, and cleared for the departing account on sign-out.
 
 ## Workflow
 
@@ -136,7 +145,7 @@ Deployment and scheduling instructions are in [supabase/functions/reminders/READ
 
 ## `eslint.config.js`
 
-````js
+````
 import reactHooks from 'eslint-plugin-react-hooks'
 
 export default [
@@ -163,7 +172,7 @@ export default [
 
 ## `index.html`
 
-````html
+````
 <!doctype html>
 <html lang="en">
   <head>
@@ -175,11 +184,12 @@ export default [
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="preload" href="/fonts/barlow-condensed-700.woff2" as="font" type="font/woff2" crossorigin />
     <meta name="description" content="Track jobs, internships, freelance work, and other opportunities from saved link to final decision." />
-    <title>Application Tracker</title>
+    <meta name="referrer" content="no-referrer" />
+    <title>Roleward™ · Application Tracker</title>
   </head>
   <body>
     <div id="root"></div>
-    <noscript>Enable JavaScript to use Application Tracker.</noscript>
+    <noscript>Enable JavaScript to use Roleward™.</noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
@@ -187,7 +197,7 @@ export default [
 
 ## `package-lock.json`
 
-````json
+````
 {
   "name": "application-tracker",
   "version": "0.1.0",
@@ -199,7 +209,7 @@ export default [
       "version": "0.1.0",
       "dependencies": {
         "@dnd-kit/core": "^6.3.1",
-        "@supabase/supabase-js": "^2.95.3",
+        "@supabase/supabase-js": "^2.119.2",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
         "react-router-dom": "^7.13.0"
@@ -3047,7 +3057,7 @@ export default [
 
 ## `package.json`
 
-````json
+````
 {
   "name": "application-tracker",
   "version": "0.1.0",
@@ -3075,7 +3085,7 @@ export default [
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
-    "@supabase/supabase-js": "^2.95.3",
+    "@supabase/supabase-js": "^2.119.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0"
@@ -3091,15 +3101,15 @@ export default [
 
 ## `public/fonts/barlow-condensed-600.woff2`
 
-Binary file included in the project.
+Binary asset included in the ZIP.
 
 ## `public/fonts/barlow-condensed-700.woff2`
 
-Binary file included in the project.
+Binary asset included in the ZIP.
 
 ## `public/fonts/barlow-condensed-LICENSE.txt`
 
-````text
+````
 Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow) BarlowCondensed-ThinItalic.ttf: Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow) BarlowCondensed-ExtraLight.ttf: Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow) BarlowCondensed-ExtraLightItalic.ttf: Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow) BarlowCondensed-Light.ttf: Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow) BarlowCondensed-LightItalic.ttf: Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow) BarlowCondensed-Regular.ttf: Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow) BarlowCondensed-Italic.ttf: Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow) BarlowCondensed-Medium.ttf: Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow) BarlowCondensed-MediumItalic.ttf: Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow) BarlowCondensed-SemiBold.ttf: Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow) BarlowCondensed-SemiBoldItalic.ttf: Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow) BarlowCondensed-Bold.ttf: Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow) BarlowCondensed-BoldItalic.ttf: Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow) BarlowCondensed-ExtraBold.ttf: Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow) BarlowCondensed-ExtraBoldItalic.ttf: Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow) BarlowCondensed-Black.ttf: Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow) BarlowCondensed-BlackItalic.ttf: Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
@@ -3197,19 +3207,19 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ## `public/fonts/inter-400.woff2`
 
-Binary file included in the project.
+Binary asset included in the ZIP.
 
 ## `public/fonts/inter-500.woff2`
 
-Binary file included in the project.
+Binary asset included in the ZIP.
 
 ## `public/fonts/inter-600.woff2`
 
-Binary file included in the project.
+Binary asset included in the ZIP.
 
 ## `public/fonts/inter-LICENSE.txt`
 
-````text
+````
 Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter) Inter-Italic[opsz,wght].ttf: Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
@@ -3307,27 +3317,37 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ## `public/icons/apple-touch-icon.png`
 
-Binary file included in the project.
+Binary asset included in the ZIP.
 
 ## `public/icons/icon-192.png`
 
-Binary file included in the project.
+Binary asset included in the ZIP.
 
 ## `public/icons/icon-512.png`
 
-Binary file included in the project.
+Binary asset included in the ZIP.
+
+## `public/icons/lb.svg`
+
+````
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="8" fill="#252840"/>
+  <path fill="#a8adff" d="M10 14h8v29h9v7H10z"/>
+  <path fill="#eff1ff" fill-rule="evenodd" d="M30 14h14l8 7v8l-4 3 6 5v7l-7 6H30zm8 7v8h5l2-2v-4l-2-2zm0 15v7h7l2-2v-3l-3-2z"/>
+</svg>
+````
 
 ## `public/icons/maskable-512.png`
 
-Binary file included in the project.
+Binary asset included in the ZIP.
 
 ## `public/manifest.webmanifest`
 
-````text
+````
 {
   "id": "/",
-  "name": "Application Tracker",
-  "short_name": "Tracker",
+  "name": "Roleward™ Application Tracker",
+  "short_name": "Roleward™",
   "description": "Track jobs, internships, and other opportunities.",
   "lang": "en",
   "start_url": "/",
@@ -3345,7 +3365,7 @@ Binary file included in the project.
 
 ## `scripts/build-offline.js`
 
-````js
+````
 import { createHash } from 'node:crypto'
 import { readdir, readFile, writeFile } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
@@ -3390,7 +3410,7 @@ await writeFile(join(dist, 'sw.js'), worker)
 
 ## `scripts/dev-local.js`
 
-````js
+````
 import { spawnSync } from 'node:child_process'
 import { createServer } from 'vite'
 
@@ -3413,6 +3433,7 @@ try {
   const url=entries.API_URL, key=entries.PUBLISHABLE_KEY||entries.ANON_KEY
   if(!url||!key) throw Error('Supabase did not return its local API URL and public key. Update the CLI and retry.')
   process.env.VITE_SUPABASE_URL=url
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY=key
   process.env.VITE_SUPABASE_ANON_KEY=key
   console.log('Local confirmation and recovery inbox: '+(entries.MAILPIT_URL||entries.INBUCKET_URL||'http://127.0.0.1:54324'))
   const server=await createServer({server:{port:5173,strictPort:true}})
@@ -3423,7 +3444,7 @@ try {
 
 ## `src/App.jsx`
 
-````jsx
+````
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import LoadingSkeleton from './components/LoadingSkeleton.jsx'
@@ -3448,22 +3469,19 @@ function WorkspaceRoutes() {
   const theme = useTheme()
   const { user, loading, error } = useAuth()
   const location = useLocation()
-  const hasCallback = Boolean(location.search || location.hash)
+  const params = new URLSearchParams(location.search)
+  const fragment = new URLSearchParams(location.hash.slice(1))
+  const hasCallback = ['code','token_hash','error','error_code','access_token'].some(key => params.has(key) || fragment.has(key))
+  const recovery = (params.get('type') || fragment.get('type')) === 'recovery'
   if (loading) return <LoadingSkeleton />
   const login = mode => <Login key={mode} mode={mode} user={user} authError={error} />
-  const segments = location.pathname.split('/').filter(Boolean)
-  const device = segments[0] === 'local'
-  const tab = segments[device ? 1 : 0] || 'dashboard'
-  const workspace = device || user
-    ? <Tracker key={device ? 'local' : user.id} user={device ? null : user} theme={theme} tab={tab}/>
-    : <Navigate to="/login" replace />
+  const callback = reset => <AuthCallback key={location.key} recovery={reset} />
   return <Suspense fallback={<LoadingSkeleton />}><Routes>
-    <Route path="/" element={<Navigate replace to={user ? '/dashboard' : '/login'}/>} />
-    {['dashboard','applications','follow-ups','account'].flatMap(section => [
-      <Route key={section} path={'/'+section} element={workspace}/>,
-      <Route key={'local-'+section} path={section==='dashboard'?'/local':'/local/'+section} element={workspace}/>,
-    ])}
-    <Route path="/auth/callback" element={<AuthCallback recovery={new URLSearchParams(location.search).get('type') === 'recovery'} />} />
+    <Route path="/" element={hasCallback ? callback(recovery) : <Navigate replace to={user ? '/dashboard' : '/login'}/>} />
+    {['dashboard','applications','follow-ups','account'].map(tab =>
+      <Route key={tab} path={'/'+tab} element={user ? <Tracker key={user.id} user={user} theme={theme} tab={tab}/> : <Navigate to="/login" replace />}/>)}
+    <Route path="/auth/callback" element={callback(recovery)} />
+    <Route path="/confirm-email" element={login('confirm')} />
     <Route path="/login" element={login('login')} />
     <Route path="/signup" element={login('signup')} />
     <Route path="/forgot-password" element={login('forgot')} />
@@ -3479,7 +3497,7 @@ export default function App() {
 
 ## `src/components/Agenda.jsx`
 
-````jsx
+````
 import { useState } from 'react'
 import Icon from './Icon.jsx'
 
@@ -3507,7 +3525,7 @@ export default function Agenda({items,actions}){
 
 ## `src/components/Board.jsx`
 
-````jsx
+````
 import { useRef, useState } from 'react'
 import { DndContext, DragOverlay, KeyboardSensor, MouseSensor, TouchSensor, pointerWithin,
   rectIntersection, useSensor, useSensors } from '@dnd-kit/core'
@@ -3551,15 +3569,18 @@ export default function Board({ rows, stage, actions, today }) {
 
 ## `src/components/Brand.jsx`
 
-````jsx
-export default function Brand(){
-  return <span className="brand"><span className="brand-mark" aria-hidden="true"><i/><i/><i/></span>Application Tracker</span>
+````
+export default function Brand() {
+  return <span className="brand">
+    <img className="lb-mark" src="/icons/lb.svg" width="34" height="34" alt=""/>
+    <span>Roleward<sup>™</sup></span>
+  </span>
 }
 ````
 
 ## `src/components/Card.jsx`
 
-````jsx
+````
 import Icon from './Icon.jsx'
 import { deadlineBadge, daysBetween, followUp, localDate, shortDate, stageStyle } from '../lib/utils.js'
 
@@ -3613,7 +3634,7 @@ export default function Card({ row, actions, today, drag }) {
 
 ## `src/components/Column.jsx`
 
-````jsx
+````
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import Card from './Card.jsx'
 import { stageStyle } from '../lib/utils.js'
@@ -3635,7 +3656,7 @@ export default function Column({ stage, rows, actions, today }) {
 
 ## `src/components/EditorSheet.jsx`
 
-````jsx
+````
 import { useRef, useState } from 'react'
 import Sheet from './Sheet.jsx'
 import { cleanForm, formFields, STAGES, TYPES } from '../lib/utils.js'
@@ -3705,9 +3726,69 @@ export default function EditorSheet({ initial, onClose, onSave, onDelete }) {
 }
 ````
 
+## `src/components/EmailVerification.jsx`
+
+````
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import * as api from '../lib/api.js'
+
+export default function EmailVerification({ initialEmail, recovery, justSent }) {
+  const [email, setEmail] = useState(initialEmail)
+  const [code, setCode] = useState('')
+  const [wait, setWait] = useState(justSent ? 60 : 0)
+  const [notice, setNotice] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const lock = useRef(false)
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (!wait) return
+    const timer = setTimeout(() => setWait(wait - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [wait])
+  async function submit(event) {
+    event.preventDefault()
+    const resend = event.nativeEvent.submitter?.value === 'resend'
+    if (lock.current || (resend && wait)) return
+    const address = email.trim()
+    if (!event.currentTarget.elements.email.reportValidity()) return
+    lock.current = true
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      if (resend) {
+        if (recovery) await api.requestReset(address)
+        else await api.resendConfirmation(address)
+        setWait(60)
+        setNotice('If this address is eligible, a fresh email is on its way. Use the latest one.')
+      } else {
+        await api.verifyEmailCode(address, code.trim(), recovery)
+        navigate(recovery ? '/reset-password' : '/dashboard', { replace: true })
+      }
+    } catch (err) {
+      if (err.status === 429) setWait(60)
+      setError(err.code === 'otp_expired' ? 'This code is invalid or expired. Check the latest email or request a new one.' : err.message)
+    } finally { lock.current = false; setBusy(false) }
+  }
+  return <form className="auth-form" onSubmit={submit}><fieldset disabled={busy}>
+    <label className="auth-field"><span>Email address</span><input required type="email" name="email" autoComplete="email"
+      value={email} onChange={e => setEmail(e.target.value)}/></label>
+    <label className="auth-field"><span>Email code</span><input name="code" className="otp-input" autoComplete="one-time-code"
+      inputMode="numeric" pattern="[0-9]{6,10}" required value={code} maxLength={10}
+      onChange={e => setCode(e.target.value.trim())}/></label>
+    <button className="btn auth-primary" type="submit" value="verify">{busy ? 'Please wait…' : 'Verify code'}</button>
+    <button className="soft-button" type="submit" value="resend" formNoValidate disabled={wait > 0}>
+      {wait ? 'Resend available in '+wait+'s' : 'Resend email'}</button>
+  </fieldset>{notice && <p role="status" className="notice-success">{notice}</p>}
+    {error && <p role="alert" className="error">{error}</p>}</form>
+}
+````
+
 ## `src/components/EmptyState.jsx`
 
-````jsx
+````
 import Icon from './Icon.jsx'
 export default function EmptyState({ filtered, onNew, onSamples, onReset }) {
   return <section className="empty">
@@ -3724,7 +3805,7 @@ export default function EmptyState({ filtered, onNew, onSamples, onReset }) {
 
 ## `src/components/FilterBar.jsx`
 
-````jsx
+````
 import { TYPES } from '../lib/utils.js'
 import Icon from './Icon.jsx'
 export default function FilterBar({ query, setQuery, type, setType, due, setDue, count, view, setView, searchRef }) {
@@ -3743,7 +3824,7 @@ export default function FilterBar({ query, setQuery, type, setType, due, setDue,
 
 ## `src/components/Icon.jsx`
 
-````jsx
+````
 const paths = {
   overview:'M3 3h7v8H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 15h7v6H3z',
   settings:'M4 7h6m4 0h6M4 17h10m4 0h2M10 4v6m4 4v6',
@@ -3770,7 +3851,7 @@ export default function Icon({ name, size = 18, fill = false }) {
 
 ## `src/components/ListView.jsx`
 
-````jsx
+````
 import { STAGES, deadlineBadge, shortDate, stageStyle } from '../lib/utils.js'
 import { PostingLink, Priority, FollowUpAction } from './Card.jsx'
 export default function ListView({ rows, actions, today }) {
@@ -3794,9 +3875,9 @@ export default function ListView({ rows, actions, today }) {
 
 ## `src/components/LoadingSkeleton.jsx`
 
-````jsx
+````
 export default function LoadingSkeleton() {
-  return <main className="tracker loading" aria-busy="true" aria-label="Loading Application Tracker">
+  return <main className="tracker loading" aria-busy="true" aria-label="Loading Roleward">
     <div className="skeleton-title" /><div className="skeleton-tiles">{Array.from({ length: 5 }, (_, i) => <i key={i}/>)}</div>
     <div className="skeleton-toolbar" /><div className="skeleton-panel" />
   </main>
@@ -3805,7 +3886,7 @@ export default function LoadingSkeleton() {
 
 ## `src/components/MoveSheet.jsx`
 
-````jsx
+````
 import { useState } from 'react'
 import { STAGES, stageStyle } from '../lib/utils.js'
 import Sheet from './Sheet.jsx'
@@ -3828,7 +3909,7 @@ export default function MoveSheet({ row, onMove, onClose }) {
 
 ## `src/components/QuickAdd.jsx`
 
-````jsx
+````
 import { useRef, useState } from 'react'
 export default function QuickAdd({ onQuick }) {
   const [text,setText] = useState('')
@@ -3850,7 +3931,7 @@ export default function QuickAdd({ onQuick }) {
 
 ## `src/components/Sheet.jsx`
 
-````jsx
+````
 import { useEffect, useId, useRef } from 'react'
 import Icon from './Icon.jsx'
 export default function Sheet({ title, onClose, children, className = '' }) {
@@ -3885,7 +3966,7 @@ export default function Sheet({ title, onClose, children, className = '' }) {
 
 ## `src/components/StageTiles.jsx`
 
-````jsx
+````
 import { useEffect, useRef, useState } from 'react'
 import { STAGES, stageStyle } from '../lib/utils.js'
 function Count({ value }) {
@@ -3922,7 +4003,7 @@ export default function StageTiles({ rows, selected, onChange }) {
 
 ## `src/components/Toast.jsx`
 
-````jsx
+````
 import { useEffect } from 'react'
 import Icon from './Icon.jsx'
 export default function Toast({ notice, onDismiss }) {
@@ -3939,7 +4020,7 @@ export default function Toast({ notice, onDismiss }) {
 
 ## `src/components/WorkspaceNav.jsx`
 
-````jsx
+````
 import { Link } from 'react-router-dom'
 import Brand from './Brand.jsx'
 import Icon from './Icon.jsx'
@@ -3952,8 +4033,8 @@ export default function WorkspaceNav({active,pathFor,user,count,theme}){
       <Link key={key} to={pathFor(key)} aria-current={active===key?'page':undefined} className="tab-link">
         <Icon name={icons[key]} /><span>{label}</span>{key==='follow-ups' && count>0 && <small>{count}</small>}
       </Link>)}</nav>
-    <div className="workspace-identity"><Icon name="device"/><div><b>{user?'Personal workspace':'Device workspace'}</b>
-      <small>{user?.email || 'Saved in this browser'}</small></div></div>
+    <div className="workspace-identity"><Icon name="device"/><div><b>Personal workspace</b>
+      <small>{user.email}</small></div></div>
     <button className="theme-control" title={'Theme: '+theme.mode} aria-label={'Theme: '+theme.mode+'. Change theme'} onClick={theme.cycle}>
       <Icon name="theme"/><span>Theme</span><small>{theme.mode}</small></button>
   </aside>
@@ -3962,15 +4043,14 @@ export default function WorkspaceNav({active,pathFor,user,count,theme}){
 
 ## `src/hooks/useApplications.js`
 
-````js
+````
 import { useMemo, useSyncExternalStore } from 'react'
-import * as local from '../lib/localWorkspace.js'
 import * as remote from '../lib/api.js'
 import { cachedRows, cacheRows } from '../lib/cache.js'
 import { cloudWorkspace } from '../lib/cloudWorkspace.js'
 
 export function useApplications(userId) {
-  const api = useMemo(() => userId ? cloudWorkspace(userId,remote,{read:cachedRows,write:cacheRows}) : local,[userId])
+  const api = useMemo(() => cloudWorkspace(userId,remote,{read:cachedRows,write:cacheRows}),[userId])
   const snapshot = useSyncExternalStore(api.subscribe,api.getSnapshot)
   return { ...snapshot, api }
 }
@@ -3978,7 +4058,7 @@ export function useApplications(userId) {
 
 ## `src/hooks/useAuth.js`
 
-````js
+````
 import { useEffect, useState } from 'react'
 import { cloudEnabled, onAuth, session } from '../lib/api.js'
 import { forgetRows } from '../lib/cache.js'
@@ -4008,7 +4088,7 @@ export function useAuth() {
 
 ## `src/hooks/useCardMotion.js`
 
-````js
+````
 import { useLayoutEffect, useRef } from 'react'
 
 // Keep a position within the scroll surface, so horizontal scrolling is not a move.
@@ -4038,7 +4118,7 @@ export function useCardMotion(ref, rows, stage, dragging) {
 
 ## `src/hooks/useTheme.js`
 
-````js
+````
 import { useEffect, useState } from 'react'
 
 const modes = ['system', 'dark', 'light']
@@ -4071,7 +4151,7 @@ export function useTheme() {
 
 ## `src/lib/agenda.js`
 
-````js
+````
 import { daysBetween, followUp, localDate, shortDate } from './utils.js'
 
 export function nextActions(rows,today){
@@ -4095,8 +4175,8 @@ export function nextActions(rows,today){
 
 ## `src/lib/api.js`
 
-````js
-import { client, configIssue } from './supabaseClient.js'
+````
+import { client, configIssue, project, publicKey } from './supabaseClient.js'
 import { formFields } from './utils.js'
 
 export const cloudEnabled = Boolean(client)
@@ -4106,7 +4186,7 @@ function db() {
   return client
 }
 function checked({ data, error }) {
-  if (error) throw new Error(error.message || 'The request failed. Try again.')
+  if (error) throw error
   return data
 }
 export const session = async () => checked(await db().auth.getSession()).session
@@ -4122,30 +4202,40 @@ export const signUp = async (email, password) => checked(await db().auth.signUp(
 export const resendConfirmation = async email => checked(await db().auth.resend({
   type:'signup', email, options:{emailRedirectTo:redirect('/auth/callback')},
 }))
-export const google = async () => checked(await db().auth.signInWithOAuth({
-  provider: 'google', options: { redirectTo: redirect('/auth/callback') },
-}))
+export async function google() {
+  db()
+  const response = await fetch(new URL('/auth/v1/settings', project), { headers: { apikey: publicKey } })
+  if (!response.ok) throw Error('Could not reach the sign-in service. Please try again.')
+  if ((await response.json()).external?.google === false) {
+    throw Error('Google sign-in is unavailable right now. You can continue with email.')
+  }
+  const data = checked(await db().auth.signInWithOAuth({
+    provider: 'google', options: { redirectTo: redirect('/auth/callback'), skipBrowserRedirect: true },
+  }))
+  if (!data.url) throw Error('Google sign-in could not start. Please try again.')
+  window.location.assign(data.url)
+}
+export const verifyEmailCode = async (email, token, recovery = false) =>
+  checked(await db().auth.verifyOtp({ email, token, type: recovery ? 'recovery' : 'email' }))
 export const requestReset = async email => checked(await db().auth.resetPasswordForEmail(email, { redirectTo: redirect('/reset-password') }))
 export const changePassword = async password => checked(await db().auth.updateUser({ password }))
 export const signOut = async () => checked(await db().auth.signOut({ scope: 'local' }))
 
-// React Strict Mode may mount a callback route twice. Exchange each one-use code once.
-let callback
-export function finishAuth(href) {
-  if (callback?.href === href) return callback.promise
-  const promise = (async () => {
-    const url = new URL(href)
-    const params = url.searchParams
-    const fragment = new URLSearchParams(url.hash.slice(1))
-    if (params.has('error') || fragment.has('error')) throw new Error('The sign-in link expired or was cancelled. Request a new one.')
-    if (params.get('code')) return checked(await db().auth.exchangeCodeForSession(params.get('code')))
-    const type = params.get('type')
-    if (params.get('token_hash') && ['email','signup','recovery'].includes(type))
-      return checked(await db().auth.verifyOtp({ token_hash: params.get('token_hash'), type }))
-    throw new Error('Open the latest link from your email in the browser where you started.')
-  })()
-  callback = { href, promise }
-  return promise
+export async function finishAuth(href) {
+  const url = new URL(href)
+  const params = url.searchParams
+  const fragment = new URLSearchParams(url.hash.slice(1))
+  const problem = params.get('error_code') || fragment.get('error_code') || params.get('error') || fragment.get('error')
+  if (problem) {
+    if (problem === 'otp_expired') throw Error('This email link has expired or has already been used. You can request a fresh one.')
+    throw Error('Sign-in was cancelled or could not be completed. You can try again.')
+  }
+  if (params.get('code')) return checked(await db().auth.exchangeCodeForSession(params.get('code')))
+  const type = params.get('type')
+  if (params.get('token_hash') && ['email','signup','recovery'].includes(type)) {
+    return checked(await db().auth.verifyOtp({ token_hash: params.get('token_hash'), type }))
+  }
+  throw Error('This link is incomplete. Open the latest email or start sign-in again.')
 }
 
 const table = () => db().from('applications')
@@ -4231,7 +4321,7 @@ export async function setReminders(userId, enabled) {
 
 ## `src/lib/cache.js`
 
-````js
+````
 import { project } from './supabaseClient.js'
 const key = id => 'application-tracker.cloud.v1:' + project + ':' + id
 
@@ -4252,7 +4342,7 @@ export function forgetRows(id) {
 
 ## `src/lib/cloudWorkspace.js`
 
-````js
+````
 import { createRow, updateRow } from './utils.js'
 import { sampleData } from './sampleData.js'
 
@@ -4423,14 +4513,10 @@ export function cloudWorkspace(userId, remote, cache) {
 
 ## `src/lib/localWorkspace.js`
 
-````js
-// Local workspace adapter. Swapping the adapter does not change the component API.
-import { cleanForm, createRow, updateRow } from './utils.js'
-import { sampleData } from './sampleData.js'
+````
+import { cleanForm, createRow } from './utils.js'
 
 const KEY = 'application-tracker.local.v1'
-const listeners = new Set()
-let snapshot
 
 function read() {
   const raw = localStorage.getItem(KEY)
@@ -4456,87 +4542,16 @@ function read() {
   return rows
 }
 
-function reload() {
-  try { snapshot = { rows: read(), error: '' } }
-  catch { snapshot = { rows: snapshot?.rows ?? [], error: 'Could not read this browser’s saved applications. Check site storage and retry.' } }
-  for (const listener of listeners) listener()
+// Accounts can explicitly import records saved by earlier versions of the app.
+export function readDeviceImport() {
+  try { return { rows: read().filter(row => !row.is_sample), error: '' } }
+  catch { return { rows: [], error: 'Could not read previous applications from this browser.' } }
 }
-
-function onStorage(event) {
-  if (event.key === KEY || event.key === null) reload()
-}
-
-export function subscribe(listener) {
-  if (!listeners.size) {
-    window.addEventListener('storage', onStorage)
-    reload()
-  }
-  listeners.add(listener)
-  return () => {
-    listeners.delete(listener)
-    if (!listeners.size) window.removeEventListener('storage', onStorage)
-  }
-}
-
-export const getSnapshot = () => {
-  if (!snapshot) reload()
-  return snapshot
-}
-export const refresh = reload
-
-async function write(change) {
-  const commit = () => {
-    let rows
-    try { rows = read() } catch { throw new Error('Could not read saved applications. Your existing data has been preserved.') }
-    const [next, result] = change(rows)
-    try { localStorage.setItem(KEY, JSON.stringify(next)) }
-    catch { throw new Error('Could not save on this device. Check browser storage and try again.') }
-    snapshot = { rows: next, error: '' }
-    for (const listener of listeners) listener()
-    return result
-  }
-  return navigator.locks ? navigator.locks.request(KEY, commit) : commit()
-}
-
-export function add(fields) {
-  return write(rows => {
-    const row = createRow(fields)
-    return [[row, ...rows], row]
-  })
-}
-
-export function update(id, patch, revision) {
-  return write(rows => {
-    const old = rows.find(row => row.id === id)
-    if (!old) throw new Error('This application has already been removed.')
-    if (revision && old.updated_at !== revision) throw new Error('This application changed in another tab. Open the latest version to continue.')
-    const next = updateRow(old, patch)
-    return [rows.map(row => row.id === id ? next : row), next]
-  })
-}
-
-export function recordFollowUp(id, revision) {
-  return write(rows => {
-    const row = rows.find(item => item.id === id)
-    if (row?.stage !== 'Applied' || row.updated_at !== revision) throw new Error('Review the latest application before logging a follow-up.')
-    const now = new Date().toISOString()
-    const next = { ...row, last_followed_up_at:now, updated_at:now }
-    return [rows.map(item => item.id === id ? next : item),next]
-  })
-}
-
-export const remove = (id, revision) => write(rows => {
-  const old = rows.find(row => row.id === id)
-  if (old && revision && old.updated_at !== revision) throw new Error('This application changed. Review it before deleting.')
-  return [rows.filter(row => row.id !== id)]
-})
-export const clearSamples = () => write(rows => [rows.filter(row => !row.is_sample)])
-export const addSamples = () => write(rows => [rows.some(row => row.is_sample) ? rows : [...sampleData(), ...rows]])
 ````
 
 ## `src/lib/sampleData.js`
 
-````js
+````
 import { createRow, offsetDate } from './utils.js'
 
 export function sampleData() {
@@ -4560,11 +4575,12 @@ export function sampleData() {
 
 ## `src/lib/supabaseClient.js`
 
-````js
+````
 import { createClient } from '@supabase/supabase-js'
 
 const url = import.meta.env.VITE_SUPABASE_URL?.trim()
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
+export const publicKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() || import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
+const key = publicKey
 function setup() {
   if (!url && !key) return { client: null, issue: '' }
   try {
@@ -4595,7 +4611,7 @@ export const project = url || 'local'
 
 ## `src/lib/utils.js`
 
-````js
+````
 export const STAGES = ['Saved', 'Applied', 'Interviewing', 'Offer', 'Closed']
 export const TYPES = ['Job', 'Internship', 'Freelance', 'Other']
 export const stageStyle = stage => ({ '--stage': 'var(--' + stage.toLowerCase() + ')' })
@@ -4716,7 +4732,7 @@ export function sortedRows(rows) {
 
 ## `src/main.jsx`
 
-````jsx
+````
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
@@ -4736,11 +4752,11 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 
 ## `src/pages/Account.jsx`
 
-````jsx
+````
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../lib/api.js'
-import * as local from '../lib/localWorkspace.js'
+import { readDeviceImport } from '../lib/localWorkspace.js'
 
 export default function Account({ user }) {
   const [enabled,setEnabled] = useState(false)
@@ -4751,10 +4767,7 @@ export default function Account({ user }) {
   const [message,setMessage] = useState(state?.message || '')
   const [error,setError] = useState('')
   const navigate = useNavigate()
-  const [deviceRows] = useState(() => {
-    local.refresh()
-    return local.getSnapshot().rows.filter(row => !row.is_sample)
-  })
+  const [{ rows: deviceRows, error: importError }] = useState(readDeviceImport)
   useEffect(() => {
     let active = true
     api.reminderSetting(user.id).then(row => {
@@ -4776,17 +4789,17 @@ export default function Account({ user }) {
             try { await api.setReminders(user.id,value); setMessage('Reminder preference saved.') }
             catch (error) { setEnabled(!value); throw error }
           }) }} />Daily reminders</label></section>
-      <section><h2>Device applications</h2>
-        <p>{deviceRows.length} personal {deviceRows.length === 1 ? 'application' : 'applications'} in this browser’s local workspace.</p>
-        {deviceRows.length > 0 && <button className="btn ghost" disabled={busy} onClick={() => {
+      {deviceRows.length > 0 && <section><h2>Import previous applications</h2>
+        <p>{deviceRows.length} personal {deviceRows.length === 1 ? 'application' : 'applications'} saved by a previous version in this browser.</p>
+        <button className="btn ghost" disabled={busy} onClick={() => {
           if (!confirm) { setConfirm(true); return }
           run(async () => {
             const count = await api.importRows(user.id,deviceRows)
             setMessage(count + ' added to this account. Your device copy is still available.'); setConfirm(false)
           })
-        }}>{confirm ? 'Confirm import to ' + user.email : 'Import device applications'}</button>}
-        <Link className="back" to="/local">Open local workspace</Link>
-      </section>
+        }}>{confirm ? 'Confirm import to ' + user.email : 'Import device applications'}</button>
+      </section>}
+      {importError && <p role="status">{importError}</p>}
       {message && <p role="status" className="notice-success">{message}</p>}
       {error && <p role="alert" className="error">{error}</p>}
       <div className="account-controls"><Link to="/reset-password">Change password</Link>
@@ -4797,30 +4810,46 @@ export default function Account({ user }) {
 
 ## `src/pages/AuthCallback.jsx`
 
-````jsx
-import { useEffect, useState } from 'react'
+````
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { finishAuth } from '../lib/api.js'
+import Brand from '../components/Brand.jsx'
 
 export default function AuthCallback({ recovery }) {
-  const [error,setError] = useState('')
+  const [href] = useState(() => window.location.href)
+  const [approved, setApproved] = useState(() => !new URL(href).searchParams.has('token_hash'))
+  const [error, setError] = useState('')
+  const pending = useRef(null)
   const navigate = useNavigate()
   useEffect(() => {
+    if (!approved) return
     let active = true
-    finishAuth(window.location.href).then(() => {
-      if (active) navigate(recovery ? '/reset-password' : '/', {replace:true})
-    }).catch(e => { if (active) setError(e.message) })
+    // Both Strict Mode effects observe the same one-use credential exchange.
+    pending.current ??= finishAuth(href)
+    pending.current.then(() => {
+      if (active) navigate(recovery ? '/reset-password' : '/dashboard', { replace: true })
+    }).catch(e => {
+      if (active) setError(e.code === 'bad_code_verifier' || /code verifier|both auth code/i.test(e.message)
+        ? 'This link needs the browser where you started. For email confirmation, you can also enter the code from your email.' : e.message)
+    })
     return () => { active = false }
-  },[navigate,recovery])
-  return <main className="account"><section className="account-panel"><h1>{error ? 'Check your link' : 'Signing you in'}</h1>
-    {error ? <><p role="alert">{error}</p><Link className="btn" to={recovery ? '/forgot-password' : '/login'}>Try again</Link></> :
-    <p role="status">Verifying your session…</p>}</section></main>
+  }, [approved, href, navigate, recovery])
+  const action = recovery ? 'Continue to reset password' : 'Confirm email'
+  return <main className="account callback-panel"><Brand/><section className="account-panel">
+    <h1>{error ? 'Check your link' : approved ? 'Signing you in' : recovery ? 'Reset your password' : 'Confirm your email'}</h1>
+    {error ? <><p role="alert">{error}</p><div className="sent-actions">
+      <Link className="btn" replace to={recovery ? '/forgot-password' : '/login'}>{recovery ? 'Request a reset email' : 'Back to login'}</Link>
+      {!recovery && <Link className="back-login" replace to="/confirm-email">Enter a code or resend confirmation</Link>}
+    </div></> : approved ? <p role="status">Verifying your session…</p> :
+      <><p>Continue to verify this request for your Roleward account.</p><button className="btn" onClick={() => setApproved(true)}>{action}</button></>}
+  </section></main>
 }
 ````
 
 ## `src/pages/Dashboard.jsx`
 
-````jsx
+````
 import { STAGES, stageStyle, shortDate, localDate } from '../lib/utils.js'
 import Icon from '../components/Icon.jsx'
 import {ActionRow} from '../components/Agenda.jsx'
@@ -4858,14 +4887,15 @@ export default function Dashboard({rows,items,openStage,openAgenda,edit,onSample
 
 ## `src/pages/Login.jsx`
 
-````jsx
+````
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import * as api from '../lib/api.js'
+import EmailVerification from '../components/EmailVerification.jsx'
 import Brand from '../components/Brand.jsx'
 import Icon from '../components/Icon.jsx'
 
-const titles = { login:'Welcome back', signup:'Create your account', forgot:'Reset your password', reset:'Choose a new password' }
+const titles = { confirm:'Confirm your email', login:'Welcome back', signup:'Create your account', forgot:'Reset your password', reset:'Choose a new password' }
 const captions = { login:'Sign in to your application workspace.',signup:'Keep your applications and next steps together across devices.',
   forgot:'Enter the email you used to create your account.',reset:'Use at least eight characters.' }
 
@@ -4882,13 +4912,13 @@ export default function Login({ mode='login', user, authError }) {
   const [busy,setBusy]=useState(false)
   const [error,setError]=useState('')
   const [sent,setSent]=useState('')
-  const [resent,setResent]=useState(false)
+  const [justSent,setJustSent]=useState(false)
   const lock=useRef(false)
   const navigate=useNavigate()
   const authEntry=mode==='login'||mode==='signup'
   const recovery=mode==='reset'
-  useEffect(()=>{document.title=titles[mode]+' · Application Tracker'},[mode])
-  if (user && authEntry) return <Navigate replace to="/dashboard"/>
+  useEffect(()=>{document.title=titles[mode]+' · Roleward™'},[mode])
+  if (user && (authEntry || mode==='confirm')) return <Navigate replace to="/dashboard"/>
   async function run(fn){
     if(lock.current) return
     lock.current=true; setBusy(true); setError('')
@@ -4902,38 +4932,44 @@ export default function Login({ mode='login', user, authError }) {
     const password=String(fields.get('password')||'')
     run(async()=>{
       if ((mode==='signup'||recovery) && password!==fields.get('confirm')) throw Error('Your passwords don’t match.')
-      if (!api.cloudEnabled) throw Error(api.configIssue || 'Account services are offline. Start the local accounts server, or open the device workspace below.')
+      if (!api.cloudEnabled) throw Error(api.configIssue || 'Account services are unavailable. Please try again later.')
       if(mode==='signup'){
         const data=await api.signUp(email,password)
         if(data.session) navigate('/dashboard',{replace:true})
-        else setSent(email)
-      } else if(mode==='forgot'){ await api.requestReset(email); setSent(email) }
+        else { setJustSent(true); setSent(email) }
+      } else if(mode==='forgot'){ await api.requestReset(email); setJustSent(true); setSent(email) }
       else if(recovery){ await api.changePassword(password); navigate('/account',{replace:true,state:{message:'Password updated.'}}) }
-      else { await api.signIn(email,password); navigate('/dashboard',{replace:true}) }
+      else {
+        try { await api.signIn(email,password) }
+        catch (err) {
+          if (err.code !== 'email_not_confirmed') throw err
+          setSent(email)
+          return
+        }
+        navigate('/dashboard',{replace:true})
+      }
     })
   }
   return <main className="auth-layout">
     <aside className="auth-art"><Brand/>
-      <div className="art-content"><h2>Application<br/>Tracker<span>.</span></h2>
-        <p>Your opportunities, from saved link to offer.</p>
+      <div className="art-content"><h2>Application<br/>tracker<span>.</span></h2>
+        <p>Track your applications, deadlines, and next steps.</p>
         <div className="paper-stack" aria-hidden="true">{[['Saved','saved'],['Applied','applied'],['Interviewing','interviewing']].map(([label,stage],i)=>
           <div className={'paper paper-'+i} key={stage} style={{'--stage':'var(--'+stage+')'}}><div><i/>{label}</div><span/><span/></div>)}</div>
       </div>
+      <span className="maker">Designed by Lycos Blanza</span>
     </aside>
     <section className="auth-form-area"><div className="auth-form-card">
       <div className="mobile-brand"><Brand/></div>
       {authEntry && !sent && <nav className="auth-tabs" aria-label="Account access">
         <Link to="/login" aria-current={mode==='login'?'page':undefined}>Log in</Link>
         <Link to="/signup" aria-current={mode==='signup'?'page':undefined}>Sign up</Link></nav>}
-      <h1>{sent?'Check your email':titles[mode]}</h1>
-      <p className="auth-caption">{sent ? mode==='forgot' ? 'If an account exists for '+sent+', a reset link is on its way.' :
-        'Open the confirmation link sent to '+sent+' in this browser.' : !api.cloudEnabled && authEntry ? 'Use the device workspace now, or start local accounts to '+(mode==='signup'?'sign up.':'log in.') : captions[mode]}</p>
-      {sent ? <div className="sent-actions">
-        <Link className="btn" to="/login">Back to login</Link>
-        <button className="soft-button" disabled={busy||resent} onClick={()=>run(async()=>{
-          if(mode==='forgot') await api.requestReset(sent); else await api.resendConfirmation(sent)
-          setResent(true)
-        })}>{resent?'Email requested':'Resend email'}</button></div> :
+      <h1>{sent ? 'Check your email' : titles[mode]}</h1>
+      <p className="auth-caption">{sent || mode==='confirm' ?
+        'Open the link in your latest email, or enter the code below.' : captions[mode]}</p>
+      {sent || mode==='confirm' ? <>
+        <EmailVerification initialEmail={sent} recovery={mode==='forgot'} justSent={justSent}/>
+        <Link className="back-login" to="/login" onClick={()=>setSent('')}>Back to login</Link></> :
       recovery && !user ? <Link className="btn" to="/forgot-password">Request a fresh reset link</Link> :
       <form onSubmit={submit} className="auth-form"><fieldset disabled={busy}>
         {!recovery && <label className="auth-field"><span>Email address</span><input name="email" type="email" autoComplete="email" required placeholder="you@example.com"/></label>}
@@ -4944,11 +4980,8 @@ export default function Login({ mode='login', user, authError }) {
         {authEntry && api.cloudEnabled && <button className="btn ghost google-btn" type="button" onClick={()=>run(api.google)}>Continue with Google</button>}
       </fieldset></form>}
       {(error||authError||api.configIssue) && <p role="alert" className="error">{error||authError||api.configIssue}</p>}
-      {!sent && !authEntry && <Link className="back-login" to="/login">← Back to login</Link>}
-      <footer className="auth-foot">{!api.cloudEnabled && <details><summary>Start local accounts to log in or sign up</summary>
-        <p>With Docker and the Supabase CLI installed, run <code>npm run dev:local</code> from the project folder. It starts local accounts and prints the test inbox address.</p></details>}
-        <Link to="/local">Continue on this device <Icon name="arrow" size={15}/></Link>
-      </footer>
+      {!sent && !authEntry && mode!=='confirm' && <Link className="back-login" to="/login">← Back to login</Link>}
+      {!sent && mode==='login' && <Link className="back-login" to="/confirm-email">Need to confirm your email?</Link>}
     </div></section>
   </main>
 }
@@ -4956,9 +4989,9 @@ export default function Login({ mode='login', user, authError }) {
 
 ## `src/pages/Tracker.jsx`
 
-````jsx
+````
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useApplications } from '../hooks/useApplications.js'
 import { blank, followUp, localDate, quickFields, sortedRows } from '../lib/utils.js'
 import LoadingSkeleton from '../components/LoadingSkeleton.jsx'
@@ -4981,9 +5014,9 @@ import MoveSheet from '../components/MoveSheet.jsx'
 export default function Tracker({ theme, user, tab }) {
   const navigate = useNavigate()
   const focusAfterNav = useRef(false)
-  const pathFor = useCallback(section => user ? '/' + section : section === 'dashboard' ? '/local' : '/local/' + section,[user])
+  const pathFor = useCallback(section => '/' + section,[])
   useEffect(() => {
-    document.title = tabs[tab] + ' · Application Tracker'
+    document.title = tabs[tab] + ' · Roleward™'
     window.scrollTo(0,0)
     if (tab==='applications' && focusAfterNav.current) {
       focusAfterNav.current=false
@@ -4991,7 +5024,7 @@ export default function Tracker({ theme, user, tab }) {
       field?.focus()
     }
   },[tab])
-  const { rows, error, api, loading, pending, status } = useApplications(user?.id)
+  const { rows, error, api, loading, pending, status } = useApplications(user.id)
   const [stage,setStage] = useState('')
   const [type,setType] = useState('')
   const [query,setQuery] = useState('')
@@ -5072,9 +5105,7 @@ export default function Tracker({ theme, user, tab }) {
     {tab==='dashboard' && <Dashboard rows={rows} items={items} openStage={openStage} openAgenda={()=>navigate(pathFor('follow-ups'))}
       edit={setEditor} onSamples={trySamples} onNew={openNew}/>}
     {tab==='follow-ups' && <Agenda items={items} actions={actions}/>}
-    {tab==='account' && <div className="settings-stack">{user ? <Account user={user}/> :
-      <section className="surface settings-panel"><h2>Device workspace</h2><p>Your applications are saved in this browser. Sign in to use an account across devices.</p>
-      <Link className="btn ghost" to="/login">Sign in or create account</Link></section>}
+    {tab==='account' && <div className="settings-stack"><Account user={user}/>
       <section className="surface settings-panel"><h2>Appearance</h2><button className="soft-button" onClick={theme.cycle}>Theme · {theme.mode}</button></section>
       {(samples || !rows.length) && <section className="surface settings-panel"><h2>Sample applications</h2>
         <button className="soft-button" onClick={samples ? clearSamples : trySamples}>{samples?'Clear sample data':'Try with sample data'}</button></section>}</div>}
@@ -5112,7 +5143,7 @@ export default function Tracker({ theme, user, tab }) {
 
 ## `src/styles/auth.css`
 
-````css
+````
 .account { max-width: 480px; margin: 7vh auto; padding: 12px 16px; }
 .back, .account-links a { display: inline-flex; align-items: center; font-size: 13px; }
 .account-panel { margin-top: 8px; padding: 22px; border: 1px solid var(--line); border-top: 4px solid var(--acc); background: var(--panel); border-radius: 4px; }
@@ -5138,7 +5169,7 @@ export default function Tracker({ theme, user, tab }) {
 
 ## `src/styles/base.css`
 
-````css
+````
 * { box-sizing: border-box; }
 html { min-height: 100%; background: var(--bg); scroll-padding-top: env(safe-area-inset-top); }
 body { margin: 0; color: var(--ink); font: 14px/1.5 var(--body); min-height: 100dvh; isolation: isolate; }
@@ -5188,7 +5219,7 @@ button svg, a svg { flex: none; }
 
 ## `src/styles/board.css`
 
-````css
+````
 .stage-nav { display: flex; position: sticky; top: env(safe-area-inset-top,0px); z-index: 2; background: var(--bg); overflow-x: auto; scrollbar-width: none; margin: 0 0 8px; border-bottom: 1px solid var(--line); }
 .stage-nav button { flex: 1; min-width: 44px; padding: 0 3px; border: 0; border-bottom: 3px solid transparent; color: var(--mute); font: 600 13px var(--hd); text-transform: uppercase; background: transparent; }
 .stage-nav .selected { border-color: var(--stage); color: var(--ink); }
@@ -5244,7 +5275,7 @@ button svg, a svg { flex: none; }
 
 ## `src/styles/list.css`
 
-````css
+````
 .list-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
 table { width: 100%; border-collapse: collapse; text-align: left; }
 th { padding: 11px; background: var(--p2); color: var(--mute); font: 600 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
@@ -5270,7 +5301,7 @@ td { padding: 4px 10px; border-top: 1px solid var(--line); overflow-wrap: anywhe
 
 ## `src/styles/sheets.css`
 
-````css
+````
 .sheet { position: fixed; inset: auto 0 0; margin: 0 auto; padding: 0; width: 100%; max-width: 540px; max-height: 94dvh; overflow: auto; overscroll-behavior: contain; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-top: 4px solid var(--acc); border-radius: 6px 6px 0 0; }
 .sheet[open] { animation: enter .2s both; }
 .sheet::backdrop { background: rgba(5,7,10,.68); }
@@ -5301,7 +5332,7 @@ td { padding: 4px 10px; border-top: 1px solid var(--line); overflow-wrap: anywhe
 
 ## `src/styles/tokens.css`
 
-````css
+````
 @font-face { font-family: "Barlow Condensed"; font-weight: 600; font-display: swap; src: url("/fonts/barlow-condensed-600.woff2") format("woff2"); }
 @font-face { font-family: "Barlow Condensed"; font-weight: 700; font-display: swap; src: url("/fonts/barlow-condensed-700.woff2") format("woff2"); }
 @font-face { font-family: Inter; font-weight: 400; font-display: swap; src: url("/fonts/inter-400.woff2") format("woff2"); }
@@ -5330,7 +5361,7 @@ td { padding: 4px 10px; border-top: 1px solid var(--line); overflow-wrap: anywhe
 
 ## `src/styles/tracker.css`
 
-````css
+````
 .tracker {
   max-width: 1280px; margin: auto;
   padding: max(23px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) calc(92px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));
@@ -5412,12 +5443,10 @@ kbd { display: none; font: 11px var(--mono); padding: 1px 5px; border: 1px solid
 
 ## `src/styles/workspace.css`
 
-````css
+````
 /* The workspace has one navigation surface and one primary action per screen. */
 .workspace { --rail: 224px; min-height: 100dvh; }
 .brand { display:inline-flex; align-items:center; gap:10px; font:700 21px/1 var(--hd); letter-spacing:.01em; white-space:nowrap; }
-.brand-mark { display:inline-flex; align-items:flex-end; justify-content:center; gap:3px; width:30px; height:30px; padding:6px 5px; background:#242743; border-radius:4px; }
-.brand-mark i { width:4px; background:#9095ff; height:12px; }.brand-mark i:nth-child(2){height:17px;background:#dadcff}.brand-mark i:nth-child(3){height:9px;background:#6cd7b5}
 .workspace-nav { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:max(8px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 8px max(16px,env(safe-area-inset-left)); background:var(--panel); border-bottom:1px solid var(--line); }
 .brand-link { display:flex; align-items:center; text-decoration:none; color:var(--ink); }
 .main-tabs { display:grid; grid-template-columns:repeat(4,1fr); position:fixed; z-index:5; bottom:0; left:0; right:0; background:var(--panel); padding:4px max(4px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(4px,env(safe-area-inset-left)); border-top:1px solid var(--line); }
@@ -5529,7 +5558,7 @@ kbd { display: none; font: 11px var(--mono); padding: 1px 5px; border: 1px solid
   .auth-layout { grid-template-columns:minmax(310px,.9fr) minmax(450px,1.1fr); align-content:stretch; background:var(--panel); }
   .auth-art { display:flex; flex-direction:column; padding:clamp(30px,5vw,76px); color:#f6f6ff; background-color:#202239;
     background-image:radial-gradient(ellipse at 90% 15%,#575b984d,transparent 65%),linear-gradient(#fff1 1px,transparent 1px),linear-gradient(90deg,#fff1 1px,transparent 1px); background-size:auto,44px 44px,44px 44px; }
-  .auth-art .brand-mark { background:#464b76; }.art-content { margin:auto 0; padding-block:36px; }.art-content h2 { font:700 clamp(64px,8vw,117px)/.85 var(--hd); letter-spacing:-.04em; margin:0; }.art-content h2 span { color:#9399ff; }
+  .art-content { margin:auto 0; padding-block:36px; }.art-content h2 { font:700 clamp(64px,8vw,117px)/.85 var(--hd); letter-spacing:-.04em; margin:0; }.art-content h2 span { color:#9399ff; }
   .art-content p { color:#c4c7df; max-width:300px; }.paper-stack { height:134px; width:min(100%,365px); position:relative; margin-top:48px; }
   .paper { position:absolute; width:56%; height:87px; background:#2e324e; box-shadow:0 5px 16px #0c0d1e45; border:1px solid #565a7d; border-left:4px solid var(--stage); border-radius:4px; padding:12px; }
   .paper-1 { top:22px; left:21%; background:#343955; }.paper-2 { top:44px;left:42%; background:#3c4160; }
@@ -5538,11 +5567,33 @@ kbd { display: none; font: 11px var(--mono); padding: 1px 5px; border: 1px solid
 }
 
 @media (min-width:700px) and (max-width:759px) { .workspace .fab { display:inline-flex; } }
+
+.brand sup { font:600 .46em var(--body); vertical-align:super; margin-left:2px; }
+.lb-mark { flex:none; }
+.maker { color:#c4c7df; font:500 13px var(--body); }
+.otp-input { letter-spacing:.16em; font-variant-numeric:tabular-nums; }
+.callback-panel > .brand { margin-bottom:18px; }
+@keyframes settle { from { opacity:0; transform:translateY(9px); } to { opacity:1; transform:translateY(0); } }
+@keyframes unfold { from { opacity:0; transform:translate(-12px,8px) rotate(-4deg); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion:no-preference) {
+  .dashboard-grid>section,.auth-form fieldset,.auth-caption,.lb-mark { animation:settle .32s ease-out both; }
+  .dashboard-grid>section:nth-child(2) { animation-delay:45ms; }
+  .dashboard-grid>section:nth-child(3) { animation-delay:85ms; }
+  .paper { animation:unfold .55s cubic-bezier(.2,.72,.23,1) both; }
+  .paper-1 { animation-delay:70ms; } .paper-2 { animation-delay:140ms; }
+  .tab-link svg,.auth-primary svg,.recent-row .company-monogram { transition:transform .18s ease-out; }
+  .tab-link[aria-current=page] svg { transform:translateY(-1px); }
+  .auth-primary:is(:hover,:focus-visible) svg { transform:translateX(3px); }
+  .recent-row:is(:hover,:focus-visible) .company-monogram { transform:translateY(-2px); }
+}
+@media (prefers-reduced-motion:reduce) {
+  *,*::before,*::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; }
+}
 ````
 
 ## `supabase/config.toml`
 
-````toml
+````
 project_id = "application-tracker"
 
 [api]
@@ -5581,6 +5632,14 @@ enable_signup = true
 enable_confirmations = true
 double_confirm_changes = true
 
+[auth.email.template.confirmation]
+subject = "Confirm your Roleward account"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your Roleward password"
+content_path = "./supabase/templates/recovery.html"
+
 [functions.reminders]
 enabled = true
 verify_jwt = false
@@ -5589,7 +5648,7 @@ entrypoint = "./functions/reminders/index.js"
 
 ## `supabase/functions/reminders/README.md`
 
-````markdown
+````
 # Scheduled email reminders
 
 The function sends a plain-text digest for each opted-in account with a confirmed email. Saved deadlines from today through three days ahead and Applied items with ten calendar days of inactivity qualify. Sample rows are excluded. The database uses the timezone saved when the user enables reminders. Delivery begins at 08:00 local time.
@@ -5606,7 +5665,7 @@ Each invocation claims up to five digests. The lease prevents overlapping runs f
 
 ## `supabase/functions/reminders/index.js`
 
-````js
+````
 import { timingSafeEqual } from 'node:crypto'
 
 function authorized(request, secret) {
@@ -5641,8 +5700,8 @@ export async function sendReminders(request, env, transport = fetch) {
         const result = await transport('https://api.resend.com/emails',{
           method:'POST', headers:{Authorization:'Bearer ' + resend,'Content-Type':'application/json',
             'Idempotency-Key':'tracker/' + job.owner_id + '/' + job.mail_day},
-          body:JSON.stringify({from,to:[job.recipient],subject:'Application reminders · ' + job.mail_day,
-            text:job.content + '\n\nManage email reminders in your tracker account.'}),
+          body:JSON.stringify({from,to:[job.recipient],subject:'Roleward™ application reminders · ' + job.mail_day,
+            text:job.content + '\n\nManage email reminders in your Roleward account.'}),
           signal:AbortSignal.timeout(12000),
         })
         if (!result.ok) throw new Error('Email delivery failed')
@@ -5666,7 +5725,7 @@ if (typeof Deno !== 'undefined') Deno.serve(request => sendReminders(request,nam
 
 ## `supabase/functions/reminders/schedule.sql`
 
-````sql
+````
 -- Run once after the function, pg_cron, pg_net and Vault secrets are ready.
 -- Scheduling again with the same name updates the job for the same database role.
 select cron.schedule(
@@ -5686,7 +5745,7 @@ select cron.schedule(
 
 ## `supabase/migrations/20261124000100_create_applications.sql`
 
-````sql
+````
 create schema if not exists tracker_private;
 revoke all on schema tracker_private from public, anon, authenticated;
 
@@ -5814,7 +5873,7 @@ for each row execute function tracker_private.notify_application_delete();
 
 ## `supabase/migrations/20261124000200_device_import.sql`
 
-````sql
+````
 alter table public.applications add column last_followed_up_at timestamptz;
 
 -- Bind each API insert to the initiating account even during a session change.
@@ -5901,7 +5960,7 @@ grant execute on function public.record_tracker_follow_up(uuid,uuid,timestamptz)
 
 ## `supabase/migrations/20261124000300_reminders.sql`
 
-````sql
+````
 create table public.reminder_preferences (
   user_id uuid primary key default auth.uid() references auth.users on delete cascade,
   enabled boolean not null default false,
@@ -5997,9 +6056,47 @@ grant execute on function public.claim_tracker_reminders(), public.ack_tracker_r
 to service_role;
 ````
 
+## `supabase/templates/confirmation.html`
+
+````
+<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:32px 16px;background:#eceef4;font:16px/1.55 Arial,sans-serif;color:#21243a">
+    <div style="max-width:480px;margin:auto;padding:28px;background:#ffffff;border-top:4px solid #626ac2">
+      <p style="margin:0;color:#4d539a;font-size:17px;font-weight:bold">LB / Roleward™</p>
+      <h1 style="line-height:1.15">Confirm your email</h1>
+      <p>Open the link and select the confirmation button, or enter the code below in Roleward.</p>
+      <p><a style="display:inline-block;padding:12px 18px;background:#32365c;color:#ffffff;text-decoration:none" href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email">Confirm email</a></p>
+      <p style="margin-bottom:4px">Your one-time code</p>
+      <p style="font:700 28px monospace;letter-spacing:3px;margin-top:0">{{ .Token }}</p>
+      <p style="color:#555a70">If you didn’t request this email, you can ignore it.</p>
+    </div>
+  </body>
+</html>
+````
+
+## `supabase/templates/recovery.html`
+
+````
+<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:32px 16px;background:#eceef4;font:16px/1.55 Arial,sans-serif;color:#21243a">
+    <div style="max-width:480px;margin:auto;padding:28px;background:#ffffff;border-top:4px solid #626ac2">
+      <p style="margin:0;color:#4d539a;font-size:17px;font-weight:bold">LB / Roleward™</p>
+      <h1 style="line-height:1.15">Reset your password</h1>
+      <p>Open the link and select the confirmation button, or enter the code below in Roleward.</p>
+      <p><a style="display:inline-block;padding:12px 18px;background:#32365c;color:#ffffff;text-decoration:none" href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=recovery">Reset password</a></p>
+      <p style="margin-bottom:4px">Your one-time code</p>
+      <p style="font:700 28px monospace;letter-spacing:3px;margin-top:0">{{ .Token }}</p>
+      <p style="color:#555a70">If you didn’t request this email, you can ignore it.</p>
+    </div>
+  </body>
+</html>
+````
+
 ## `supabase/tests/database/application_rules.test.sql`
 
-````sql
+````
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
@@ -6062,7 +6159,7 @@ rollback;
 
 ## `supabase/tests/database/cloud_features.test.sql`
 
-````sql
+````
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
@@ -6119,7 +6216,7 @@ rollback;
 
 ## `tests/agenda.test.js`
 
-````js
+````
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { nextActions } from '../src/lib/agenda.js'
@@ -6137,7 +6234,7 @@ test('agenda prioritizes overdue and imminent deadlines, then follow-ups, then t
 
 ## `tests/reminders.test.js`
 
-````js
+````
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { sendReminders } from '../supabase/functions/reminders/index.js'
@@ -6184,7 +6281,7 @@ test('one rejected recipient does not hold up the next recipient',async () => {
 
 ## `tests/workspace.test.js`
 
-````js
+````
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { cloudWorkspace } from '../src/lib/cloudWorkspace.js'
@@ -6254,7 +6351,7 @@ Object.defineProperty(globalThis.navigator,'onLine',{value:true,configurable:tru
 
 ## `vercel.json`
 
-````json
+````
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
@@ -6263,7 +6360,7 @@ Object.defineProperty(globalThis.navigator,'onLine',{value:true,configurable:tru
 
 ## `vite.config.js`
 
-````js
+````
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 

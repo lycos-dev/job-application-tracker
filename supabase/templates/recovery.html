@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:32px 16px;background:#eceef4;font:16px/1.55 Arial,sans-serif;color:#21243a">
+    <div style="max-width:480px;margin:auto;padding:28px;background:#ffffff;border-top:4px solid #626ac2">
+      <p style="margin:0;color:#4d539a;font-size:17px;font-weight:bold">LB / Roleward™</p>
+      <h1 style="line-height:1.15">Reset your password</h1>
+      <p>Open the link and select the confirmation button, or enter the code below in Roleward.</p>
+      <p><a style="display:inline-block;padding:12px 18px;background:#32365c;color:#ffffff;text-decoration:none" href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=recovery">Reset password</a></p>
+      <p style="margin-bottom:4px">Your one-time code</p>
+      <p style="font:700 28px monospace;letter-spacing:3px;margin-top:0">{{ .Token }}</p>
+      <p style="color:#555a70">If you didn’t request this email, you can ignore it.</p>
+    </div>
+  </body>
+</html>

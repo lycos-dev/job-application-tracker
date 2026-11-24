@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Application Tracker",
-  "short_name": "Tracker",
+  "name": "Roleward™ Application Tracker",
+  "short_name": "Roleward™",
   "description": "Track jobs, internships, and other opportunities.",
   "lang": "en",
   "start_url": "/",

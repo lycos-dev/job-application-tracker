@@ -1,4 +1,4 @@
-import { client, configIssue } from './supabaseClient.js'
+import { client, configIssue, project, publicKey } from './supabaseClient.js'
 import { formFields } from './utils.js'
 
 export const cloudEnabled = Boolean(client)
@@ -8,7 +8,7 @@ function db() {
   return client
 }
 function checked({ data, error }) {
-  if (error) throw new Error(error.message || 'The request failed. Try again.')
+  if (error) throw error
   return data
 }
 export const session = async () => checked(await db().auth.getSession()).session
@@ -24,30 +24,40 @@ export const signUp = async (email, password) => checked(await db().auth.signUp(
 export const resendConfirmation = async email => checked(await db().auth.resend({
   type:'signup', email, options:{emailRedirectTo:redirect('/auth/callback')},
 }))
-export const google = async () => checked(await db().auth.signInWithOAuth({
-  provider: 'google', options: { redirectTo: redirect('/auth/callback') },
-}))
+export async function google() {
+  db()
+  const response = await fetch(new URL('/auth/v1/settings', project), { headers: { apikey: publicKey } })
+  if (!response.ok) throw Error('Could not reach the sign-in service. Please try again.')
+  if ((await response.json()).external?.google === false) {
+    throw Error('Google sign-in is unavailable right now. You can continue with email.')
+  }
+  const data = checked(await db().auth.signInWithOAuth({
+    provider: 'google', options: { redirectTo: redirect('/auth/callback'), skipBrowserRedirect: true },
+  }))
+  if (!data.url) throw Error('Google sign-in could not start. Please try again.')
+  window.location.assign(data.url)
+}
+export const verifyEmailCode = async (email, token, recovery = false) =>
+  checked(await db().auth.verifyOtp({ email, token, type: recovery ? 'recovery' : 'email' }))
 export const requestReset = async email => checked(await db().auth.resetPasswordForEmail(email, { redirectTo: redirect('/reset-password') }))
 export const changePassword = async password => checked(await db().auth.updateUser({ password }))
 export const signOut = async () => checked(await db().auth.signOut({ scope: 'local' }))
 
-// React Strict Mode may mount a callback route twice. Exchange each one-use code once.
-let callback
-export function finishAuth(href) {
-  if (callback?.href === href) return callback.promise
-  const promise = (async () => {
-    const url = new URL(href)
-    const params = url.searchParams
-    const fragment = new URLSearchParams(url.hash.slice(1))
-    if (params.has('error') || fragment.has('error')) throw new Error('The sign-in link expired or was cancelled. Request a new one.')
-    if (params.get('code')) return checked(await db().auth.exchangeCodeForSession(params.get('code')))
-    const type = params.get('type')
-    if (params.get('token_hash') && ['email','signup','recovery'].includes(type))
-      return checked(await db().auth.verifyOtp({ token_hash: params.get('token_hash'), type }))
-    throw new Error('Open the latest link from your email in the browser where you started.')
-  })()
-  callback = { href, promise }
-  return promise
+export async function finishAuth(href) {
+  const url = new URL(href)
+  const params = url.searchParams
+  const fragment = new URLSearchParams(url.hash.slice(1))
+  const problem = params.get('error_code') || fragment.get('error_code') || params.get('error') || fragment.get('error')
+  if (problem) {
+    if (problem === 'otp_expired') throw Error('This email link has expired or has already been used. You can request a fresh one.')
+    throw Error('Sign-in was cancelled or could not be completed. You can try again.')
+  }
+  if (params.get('code')) return checked(await db().auth.exchangeCodeForSession(params.get('code')))
+  const type = params.get('type')
+  if (params.get('token_hash') && ['email','signup','recovery'].includes(type)) {
+    return checked(await db().auth.verifyOtp({ token_hash: params.get('token_hash'), type }))
+  }
+  throw Error('This link is incomplete. Open the latest email or start sign-in again.')
 }
 
 const table = () => db().from('applications')

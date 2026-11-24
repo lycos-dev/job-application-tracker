@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useApplications } from '../hooks/useApplications.js'
 import { blank, followUp, localDate, quickFields, sortedRows } from '../lib/utils.js'
 import LoadingSkeleton from '../components/LoadingSkeleton.jsx'
@@ -22,9 +22,9 @@ import MoveSheet from '../components/MoveSheet.jsx'
 export default function Tracker({ theme, user, tab }) {
   const navigate = useNavigate()
   const focusAfterNav = useRef(false)
-  const pathFor = useCallback(section => user ? '/' + section : section === 'dashboard' ? '/local' : '/local/' + section,[user])
+  const pathFor = useCallback(section => '/' + section,[])
   useEffect(() => {
-    document.title = tabs[tab] + ' · Application Tracker'
+    document.title = tabs[tab] + ' · Roleward™'
     window.scrollTo(0,0)
     if (tab==='applications' && focusAfterNav.current) {
       focusAfterNav.current=false
@@ -32,7 +32,7 @@ export default function Tracker({ theme, user, tab }) {
       field?.focus()
     }
   },[tab])
-  const { rows, error, api, loading, pending, status } = useApplications(user?.id)
+  const { rows, error, api, loading, pending, status } = useApplications(user.id)
   const [stage,setStage] = useState('')
   const [type,setType] = useState('')
   const [query,setQuery] = useState('')
@@ -113,9 +113,7 @@ export default function Tracker({ theme, user, tab }) {
     {tab==='dashboard' && <Dashboard rows={rows} items={items} openStage={openStage} openAgenda={()=>navigate(pathFor('follow-ups'))}
       edit={setEditor} onSamples={trySamples} onNew={openNew}/>}
     {tab==='follow-ups' && <Agenda items={items} actions={actions}/>}
-    {tab==='account' && <div className="settings-stack">{user ? <Account user={user}/> :
-      <section className="surface settings-panel"><h2>Device workspace</h2><p>Your applications are saved in this browser. Sign in to use an account across devices.</p>
-      <Link className="btn ghost" to="/login">Sign in or create account</Link></section>}
+    {tab==='account' && <div className="settings-stack"><Account user={user}/>
       <section className="surface settings-panel"><h2>Appearance</h2><button className="soft-button" onClick={theme.cycle}>Theme · {theme.mode}</button></section>
       {(samples || !rows.length) && <section className="surface settings-panel"><h2>Sample applications</h2>
         <button className="soft-button" onClick={samples ? clearSamples : trySamples}>{samples?'Clear sample data':'Try with sample data'}</button></section>}</div>}

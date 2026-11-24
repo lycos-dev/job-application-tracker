@@ -20,6 +20,7 @@ try {
   const url=entries.API_URL, key=entries.PUBLISHABLE_KEY||entries.ANON_KEY
   if(!url||!key) throw Error('Supabase did not return its local API URL and public key. Update the CLI and retry.')
   process.env.VITE_SUPABASE_URL=url
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY=key
   process.env.VITE_SUPABASE_ANON_KEY=key
   console.log('Local confirmation and recovery inbox: '+(entries.MAILPIT_URL||entries.INBUCKET_URL||'http://127.0.0.1:54324'))
   const server=await createServer({server:{port:5173,strictPort:true}})

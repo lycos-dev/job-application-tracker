@@ -10,8 +10,8 @@ export default function WorkspaceNav({active,pathFor,user,count,theme}){
       <Link key={key} to={pathFor(key)} aria-current={active===key?'page':undefined} className="tab-link">
         <Icon name={icons[key]} /><span>{label}</span>{key==='follow-ups' && count>0 && <small>{count}</small>}
       </Link>)}</nav>
-    <div className="workspace-identity"><Icon name="device"/><div><b>{user?'Personal workspace':'Device workspace'}</b>
-      <small>{user?.email || 'Saved in this browser'}</small></div></div>
+    <div className="workspace-identity"><Icon name="device"/><div><b>Personal workspace</b>
+      <small>{user.email}</small></div></div>
     <button className="theme-control" title={'Theme: '+theme.mode} aria-label={'Theme: '+theme.mode+'. Change theme'} onClick={theme.cycle}>
       <Icon name="theme"/><span>Theme</span><small>{theme.mode}</small></button>
   </aside>

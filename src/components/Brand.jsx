@@ -1,3 +1,6 @@
-export default function Brand(){
-  return <span className="brand"><span className="brand-mark" aria-hidden="true"><i/><i/><i/></span>Application Tracker</span>
+export default function Brand() {
+  return <span className="brand">
+    <img className="lb-mark" src="/icons/lb.svg" width="34" height="34" alt=""/>
+    <span>Roleward<sup>™</sup></span>
+  </span>
 }

@@ -32,8 +32,8 @@ export async function sendReminders(request, env, transport = fetch) {
         const result = await transport('https://api.resend.com/emails',{
           method:'POST', headers:{Authorization:'Bearer ' + resend,'Content-Type':'application/json',
             'Idempotency-Key':'tracker/' + job.owner_id + '/' + job.mail_day},
-          body:JSON.stringify({from,to:[job.recipient],subject:'Application reminders · ' + job.mail_day,
-            text:job.content + '\n\nManage email reminders in your tracker account.'}),
+          body:JSON.stringify({from,to:[job.recipient],subject:'Roleward™ application reminders · ' + job.mail_day,
+            text:job.content + '\n\nManage email reminders in your Roleward account.'}),
           signal:AbortSignal.timeout(12000),
         })
         if (!result.ok) throw new Error('Email delivery failed')

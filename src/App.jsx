@@ -22,22 +22,19 @@ function WorkspaceRoutes() {
   const theme = useTheme()
   const { user, loading, error } = useAuth()
   const location = useLocation()
-  const hasCallback = Boolean(location.search || location.hash)
+  const params = new URLSearchParams(location.search)
+  const fragment = new URLSearchParams(location.hash.slice(1))
+  const hasCallback = ['code','token_hash','error','error_code','access_token'].some(key => params.has(key) || fragment.has(key))
+  const recovery = (params.get('type') || fragment.get('type')) === 'recovery'
   if (loading) return <LoadingSkeleton />
   const login = mode => <Login key={mode} mode={mode} user={user} authError={error} />
-  const segments = location.pathname.split('/').filter(Boolean)
-  const device = segments[0] === 'local'
-  const tab = segments[device ? 1 : 0] || 'dashboard'
-  const workspace = device || user
-    ? <Tracker key={device ? 'local' : user.id} user={device ? null : user} theme={theme} tab={tab}/>
-    : <Navigate to="/login" replace />
+  const callback = reset => <AuthCallback key={location.key} recovery={reset} />
   return <Suspense fallback={<LoadingSkeleton />}><Routes>
-    <Route path="/" element={<Navigate replace to={user ? '/dashboard' : '/login'}/>} />
-    {['dashboard','applications','follow-ups','account'].flatMap(section => [
-      <Route key={section} path={'/'+section} element={workspace}/>,
-      <Route key={'local-'+section} path={section==='dashboard'?'/local':'/local/'+section} element={workspace}/>,
-    ])}
-    <Route path="/auth/callback" element={<AuthCallback recovery={new URLSearchParams(location.search).get('type') === 'recovery'} />} />
+    <Route path="/" element={hasCallback ? callback(recovery) : <Navigate replace to={user ? '/dashboard' : '/login'}/>} />
+    {['dashboard','applications','follow-ups','account'].map(tab =>
+      <Route key={tab} path={'/'+tab} element={user ? <Tracker key={user.id} user={user} theme={theme} tab={tab}/> : <Navigate to="/login" replace />}/>)}
+    <Route path="/auth/callback" element={callback(recovery)} />
+    <Route path="/confirm-email" element={login('confirm')} />
     <Route path="/login" element={login('login')} />
     <Route path="/signup" element={login('signup')} />
     <Route path="/forgot-password" element={login('forgot')} />

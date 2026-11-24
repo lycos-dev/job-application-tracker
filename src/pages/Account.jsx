@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../lib/api.js'
-import * as local from '../lib/localWorkspace.js'
+import { readDeviceImport } from '../lib/localWorkspace.js'
 
 export default function Account({ user }) {
   const [enabled,setEnabled] = useState(false)
@@ -12,10 +12,7 @@ export default function Account({ user }) {
   const [message,setMessage] = useState(state?.message || '')
   const [error,setError] = useState('')
   const navigate = useNavigate()
-  const [deviceRows] = useState(() => {
-    local.refresh()
-    return local.getSnapshot().rows.filter(row => !row.is_sample)
-  })
+  const [{ rows: deviceRows, error: importError }] = useState(readDeviceImport)
   useEffect(() => {
     let active = true
     api.reminderSetting(user.id).then(row => {
@@ -37,17 +34,17 @@ export default function Account({ user }) {
             try { await api.setReminders(user.id,value); setMessage('Reminder preference saved.') }
             catch (error) { setEnabled(!value); throw error }
           }) }} />Daily reminders</label></section>
-      <section><h2>Device applications</h2>
-        <p>{deviceRows.length} personal {deviceRows.length === 1 ? 'application' : 'applications'} in this browser’s local workspace.</p>
-        {deviceRows.length > 0 && <button className="btn ghost" disabled={busy} onClick={() => {
+      {deviceRows.length > 0 && <section><h2>Import previous applications</h2>
+        <p>{deviceRows.length} personal {deviceRows.length === 1 ? 'application' : 'applications'} saved by a previous version in this browser.</p>
+        <button className="btn ghost" disabled={busy} onClick={() => {
           if (!confirm) { setConfirm(true); return }
           run(async () => {
             const count = await api.importRows(user.id,deviceRows)
             setMessage(count + ' added to this account. Your device copy is still available.'); setConfirm(false)
           })
-        }}>{confirm ? 'Confirm import to ' + user.email : 'Import device applications'}</button>}
-        <Link className="back" to="/local">Open local workspace</Link>
-      </section>
+        }}>{confirm ? 'Confirm import to ' + user.email : 'Import device applications'}</button>
+      </section>}
+      {importError && <p role="status">{importError}</p>}
       {message && <p role="status" className="notice-success">{message}</p>}
       {error && <p role="alert" className="error">{error}</p>}
       <div className="account-controls"><Link to="/reset-password">Change password</Link>
